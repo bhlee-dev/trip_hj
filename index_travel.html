@@ -1,0 +1,1182 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="여행경비">
+<meta name="theme-color" content="#000000">
+<title>여행경비</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+:root {
+  /* ── Backgrounds */
+  --bg:           #000000;
+  --surface-1:    #1C1C1E;
+  --surface-2:    #2C2C2E;
+  --surface-3:    #3A3A3C;
+  /* ── Borders */
+  --border:       rgba(255,255,255,0.04);
+  --border-mid:   rgba(255,255,255,0.08);
+  /* ── Accent */
+  --accent:       #F5F5F7;
+  --accent-bg:    rgba(255,255,255,0.07);
+  /* ── Users */
+  --husband:      rgba(245,245,247,0.65);
+  --husband-bg:   rgba(255,255,255,0.06);
+  --wife:         rgba(245,245,247,0.40);
+  --wife-bg:      rgba(255,255,255,0.04);
+  --fixed:        rgba(255,255,255,0.32);
+  --fixed-bg:     rgba(255,255,255,0.04);
+  /* ── Text */
+  --text:         #F5F5F7;
+  --text-sub:     rgba(245,245,247,0.52);
+  --text-muted:   rgba(245,245,247,0.28);
+  /* ── Semantic */
+  --danger:       #FF453A;
+  --danger-bg:    rgba(255,69,58,0.10);
+  --warning:      #FFD60A;
+  /* ── JS aliases */
+  --primary:      rgba(245,245,247,0.88);
+  --primary-bg:   rgba(255,255,255,0.07);
+  --surface:      #1C1C1E;
+  /* ── Trip colors */
+  --blue:         #0A84FF;
+  --blue-bg:      rgba(10,132,255,0.12);
+  --green:        #30D158;
+  --green-bg:     rgba(48,209,88,0.12);
+  --orange:       #FF9F0A;
+  --orange-bg:    rgba(255,159,10,0.12);
+  --teal:         #5AC8FA;
+  --teal-bg:      rgba(90,200,250,0.12);
+  /* ── Spacing */
+  --sp-1:4px;--sp-2:8px;--sp-3:12px;--sp-4:16px;--sp-5:20px;--sp-6:24px;--sp-8:32px;
+  /* ── Radius */
+  --radius-sm:12px;--radius-md:16px;--radius-lg:22px;--radius-xl:28px;
+  --radius-card:16px;--radius-button:8px;--radius-pill:999px;
+  /* ── Typography */
+  --text-hero:36px;--text-h1:24px;--text-h2:18px;--text-body:16px;
+  --text-caption:14px;--text-micro:12px;
+  /* ── Weights */
+  --fw-bold:700;--fw-semibold:600;--fw-medium:500;--fw-regular:400;
+  /* ── Letter spacing */
+  --ls-tight:-.03em;--ls-snug:-.02em;--ls-normal:-.01em;--ls-wide:.04em;--ls-wider:.08em;
+}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg);color:var(--text);font-family:'Pretendard Variable',Pretendard,-apple-system,'Roboto',sans-serif;-webkit-font-smoothing:antialiased;-webkit-text-size-adjust:100%}
+body{display:flex;flex-direction:column;align-items:stretch}
+#app{width:100%;min-height:100vh;min-height:100svh;display:flex;flex-direction:column;position:relative;background:var(--bg)}
+@media(min-width:600px){body{align-items:center}#app{max-width:480px}}
+
+/* ── OFFLINE / TOAST */
+#offline-bar{display:none;background:rgba(200,162,74,0.09);color:var(--warning);border-bottom:1px solid rgba(200,162,74,0.16);font-size:var(--text-caption);font-weight:var(--fw-medium);padding:10px 20px;text-align:center;cursor:pointer;position:sticky;top:0;z-index:200}
+#offline-bar.show{display:block}
+#toast{position:fixed;top:max(env(safe-area-inset-top,0px) + 16px,20px);left:50%;transform:translateX(-50%) translateY(calc(-100% - 8px));opacity:0;transition:opacity .25s ease,transform .25s ease;pointer-events:none;z-index:500;background:rgba(28,28,30,0.95);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.08);border-radius:999px;color:#F5F5F7;font-size:var(--text-caption);font-weight:var(--fw-medium);padding:11px 20px;white-space:nowrap;max-width:90vw}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ── HEADER */
+#app-header{height:54px;background:rgba(17,17,18,0.82);backdrop-filter:blur(20px) saturate(160%);-webkit-backdrop-filter:blur(20px) saturate(160%);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 22px;position:sticky;top:0;z-index:100;flex-shrink:0}
+#header-title-wrap{display:flex;align-items:center;gap:4px;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:opacity .15s;border-radius:8px;padding:4px 6px;margin:-4px -6px}
+#header-title-wrap:active{opacity:.55}
+#header-title{font-size:var(--text-h2);font-weight:var(--fw-semibold);color:var(--text);letter-spacing:var(--ls-normal)}
+#header-version{font-size:var(--text-micro);font-weight:var(--fw-medium);color:var(--text-muted);letter-spacing:.02em}
+
+/* ── APP SWITCHER */
+#app-switcher-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:300;display:none;align-items:flex-end;justify-content:center}
+#app-switcher-overlay.show{display:flex}
+#app-switcher-sheet{background:#1c1c1e;border-radius:20px 20px 0 0;padding:0 0 calc(16px + env(safe-area-inset-bottom,0px));width:100%;max-width:430px}
+.app-switcher-title{font-size:var(--text-micro);font-weight:var(--fw-medium);color:#8e8e93;text-align:center;padding:16px 20px 14px;border-bottom:1px solid rgba(255,255,255,0.1);letter-spacing:.06em;text-transform:uppercase}
+.app-switcher-item{width:100%;min-height:60px;border:none;border-bottom:1px solid rgba(255,255,255,0.08);background:transparent;color:var(--text);font-size:17px;font-weight:var(--fw-regular);cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:14px;padding:0 20px;-webkit-tap-highlight-color:transparent;transition:background .15s;letter-spacing:-.01em;text-align:left}
+.app-switcher-item:active{background:rgba(255,255,255,0.08)}
+.app-switcher-item.current{color:var(--text-muted);cursor:default}
+.app-switcher-item-label{flex:1}
+.app-switcher-item-label small{display:block;font-size:var(--text-micro);color:var(--text-muted);margin-top:2px;font-weight:var(--fw-regular)}
+
+/* ── LAYOUT */
+#main-content{flex:1;overflow:hidden;display:flex;flex-direction:column}
+.tab-content{display:none;opacity:0;transition:opacity .2s ease-in-out}
+.tab-content.active{flex:1;display:flex;flex-direction:column;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:calc(88px + env(safe-area-inset-bottom,0px));opacity:1}
+
+/* ── BOTTOM TABS */
+#bottom-tabs{height:calc(64px + env(safe-area-inset-bottom,0px));background:rgba(17,17,18,0.88);backdrop-filter:blur(24px) saturate(160%);-webkit-backdrop-filter:blur(24px) saturate(160%);border-top:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-around;padding-top:10px;padding-bottom:env(safe-area-inset-bottom,0px);position:sticky;bottom:0;flex-shrink:0;z-index:100}
+.tab-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;color:var(--text-muted);font-size:var(--text-micro);font-family:inherit;font-weight:var(--fw-medium);cursor:pointer;padding:0 4px;-webkit-tap-highlight-color:transparent;transition:color .15s;letter-spacing:-.01em}
+.tab-btn.active{color:var(--text)}
+.tab-icon-svg{width:22px;height:22px}
+
+/* ── FORMS */
+.form-group{padding:0 16px;margin-bottom:14px}
+.form-label{font-size:var(--text-caption);font-weight:var(--fw-medium);color:var(--text-sub);margin-bottom:6px;display:block;letter-spacing:var(--ls-normal)}
+.form-input{width:100%;height:48px;background:var(--surface-1);border:1px solid var(--border-mid);border-radius:var(--radius-md);color:var(--text);font-size:var(--text-body);font-family:inherit;padding:0 14px;outline:none;transition:border-color .2s;-webkit-appearance:none;appearance:none}
+.form-input:focus{border-color:rgba(255,255,255,0.32)}
+.form-input::placeholder{color:var(--text-muted)}
+select.form-input{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='rgba(245,245,247,0.4)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;padding-right:36px}
+input[type="date"].form-input{font-size:var(--text-body);-webkit-appearance:none;appearance:none}
+.input-with-suffix{position:relative}
+.input-with-suffix .form-input{padding-right:56px}
+.input-suffix{position:absolute;right:14px;top:50%;transform:translateY(-50%);font-size:var(--text-caption);font-weight:var(--fw-medium);color:var(--text-muted);pointer-events:none}
+.form-hint{font-size:var(--text-micro);color:var(--text-muted);margin-top:5px;min-height:16px}
+.form-hint.highlight{color:var(--green);font-weight:var(--fw-medium)}
+.form-error{font-size:var(--text-caption);color:var(--danger);margin-bottom:8px;display:none}
+.form-error.show{display:block}
+
+/* ── SEG CTRL */
+.seg-ctrl{display:flex;background:var(--surface-2);border-radius:var(--radius-sm);padding:3px;gap:3px}
+.seg-btn{flex:1;height:36px;border:none;border-radius:9px;background:transparent;color:var(--text-muted);font-size:var(--text-caption);font-weight:var(--fw-medium);cursor:pointer;font-family:inherit;transition:color .15s,background .15s;-webkit-tap-highlight-color:transparent}
+.seg-btn.active{background:#FFFFFF;color:#121212}
+
+/* ── CHIPS */
+.chip-row{display:flex;gap:6px;flex-wrap:wrap}
+.chip{height:34px;padding:0 13px;border-radius:var(--radius-pill);border:1px solid var(--border-mid);background:var(--surface-1);color:var(--text-sub);font-size:var(--text-caption);font-weight:var(--fw-medium);cursor:pointer;font-family:inherit;transition:background .15s,border-color .15s,color .15s;-webkit-tap-highlight-color:transparent;white-space:nowrap}
+.chip.active{background:#FFFFFF;color:#000;border-color:#FFFFFF}
+
+/* ── BUTTONS */
+.btn{height:54px;border:none;border-radius:var(--radius-md);font-size:var(--text-body);font-weight:var(--fw-semibold);cursor:pointer;font-family:inherit;transition:opacity .2s;-webkit-tap-highlight-color:transparent;width:100%;display:flex;align-items:center;justify-content:center;gap:6px}
+.btn:disabled{opacity:.32;cursor:not-allowed}
+.btn-primary{background:var(--accent);color:#0C0C0D}
+.btn-secondary{background:var(--surface-2);color:var(--text)}
+
+/* ── SECTION HEADER */
+.section-header{font-size:var(--text-caption);font-weight:var(--fw-semibold);color:var(--text-muted);letter-spacing:var(--ls-wider);text-transform:uppercase;padding:20px 16px 10px}
+
+/* ── TRIP SELECTOR BAR */
+.trip-selector-bar{padding:12px 16px 14px;background:var(--surface-1);border-bottom:1px solid var(--border-mid)}
+
+/* ── HOME TAB */
+.home-header{padding:24px 16px 16px}
+.home-greeting{font-size:var(--text-caption);color:var(--text-muted);font-weight:var(--fw-regular);display:block;margin-bottom:4px}
+.home-title{font-size:var(--text-h1);font-weight:var(--fw-bold);color:var(--text);letter-spacing:var(--ls-tight)}
+
+.trip-card{background:var(--surface-1);border-radius:var(--radius-card);padding:18px;margin:0 16px 12px;border:1px solid var(--border);cursor:pointer;-webkit-tap-highlight-color:transparent;transition:background .15s,transform .1s;display:block;width:calc(100% - 32px);text-align:left;font-family:inherit}
+.trip-card:active{background:var(--surface-2);transform:scale(.985)}
+.trip-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px}
+.trip-card-title{font-size:var(--text-h2);font-weight:var(--fw-semibold);color:var(--text);letter-spacing:var(--ls-snug);flex:1}
+.trip-card-currency{font-size:var(--text-micro);font-weight:var(--fw-medium);color:var(--text-muted);background:var(--surface-3);padding:3px 9px;border-radius:var(--radius-pill);letter-spacing:.02em;flex-shrink:0;margin-top:2px}
+.trip-card-dates{font-size:var(--text-caption);color:var(--text-muted);margin-bottom:14px}
+.trip-card-stats{display:flex;gap:20px;flex-wrap:wrap}
+.trip-stat{display:flex;flex-direction:column;gap:2px}
+.trip-stat-label{font-size:var(--text-micro);color:var(--text-muted)}
+.trip-stat-val{font-size:var(--text-caption);font-weight:var(--fw-semibold);color:var(--text);letter-spacing:var(--ls-snug)}
+.trip-card-chevron{flex-shrink:0;color:var(--text-muted);margin-top:auto}
+
+/* ── EMPTY STATE */
+.empty-state{padding:64px 32px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:10px}
+.empty-icon{font-size:48px;opacity:.4}
+.empty-title{font-size:var(--text-h2);font-weight:var(--fw-semibold);color:var(--text-sub)}
+.empty-sub{font-size:var(--text-caption);color:var(--text-muted)}
+.empty-sm{padding:32px 24px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:8px}
+.empty-sm .empty-icon{font-size:32px}
+
+/* ── LIST ITEMS */
+.list-wrap{background:var(--surface-1);border-top:1px solid var(--border)}
+.list-item{display:flex;align-items:flex-start;gap:12px;padding:14px 16px;border-bottom:1px solid var(--border)}
+.list-item:last-child{border-bottom:none}
+.list-item-body{flex:1;min-width:0}
+.list-item-date{font-size:var(--text-micro);color:var(--text-muted);margin-bottom:3px}
+.list-item-title{font-size:var(--text-body);font-weight:var(--fw-medium);color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:var(--ls-snug)}
+.list-item-meta{font-size:var(--text-micro);color:var(--text-muted);margin-top:3px;display:flex;align-items:center;gap:6px}
+.list-item-right{text-align:right;flex-shrink:0}
+.list-item-local{font-size:var(--text-body);font-weight:var(--fw-semibold);color:var(--text);letter-spacing:var(--ls-snug)}
+.list-item-krw{font-size:var(--text-micro);color:var(--text-muted);margin-top:2px}
+.icon-btn{background:none;border:none;color:var(--text-muted);cursor:pointer;padding:4px;-webkit-tap-highlight-color:transparent;transition:color .15s;display:flex;align-items:center;justify-content:center;border-radius:50%}
+.icon-btn:active{color:var(--danger)}
+
+/* ── PAYER PILLS */
+.pill-h{background:var(--husband-bg);color:var(--husband);font-size:var(--text-micro);padding:2px 8px;border-radius:var(--radius-pill);font-weight:var(--fw-medium)}
+.pill-w{background:var(--wife-bg);color:var(--wife);font-size:var(--text-micro);padding:2px 8px;border-radius:var(--radius-pill);font-weight:var(--fw-medium)}
+.pill-j{background:var(--fixed-bg);color:var(--fixed);font-size:var(--text-micro);padding:2px 8px;border-radius:var(--radius-pill);font-weight:var(--fw-medium)}
+
+/* ── CAT PILLS */
+.cpill{font-size:var(--text-micro);padding:2px 8px;border-radius:var(--radius-pill);font-weight:var(--fw-medium)}
+.cpill-교통{background:var(--blue-bg);color:var(--blue)}
+.cpill-숙박{background:var(--teal-bg);color:var(--teal)}
+.cpill-식비{background:var(--orange-bg);color:var(--orange)}
+.cpill-관광{background:var(--green-bg);color:var(--green)}
+.cpill-기타{background:rgba(255,255,255,0.04);color:var(--text-muted)}
+
+/* ── DETAIL OVERLAY */
+#detail-overlay{position:fixed;inset:0;background:var(--bg);z-index:200;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .3s cubic-bezier(.32,.72,0,1)}
+#detail-overlay.show{transform:translateX(0)}
+#detail-header{height:54px;background:rgba(17,17,18,0.82);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;flex-shrink:0;gap:12px}
+#detail-close{background:none;border:none;color:var(--blue);cursor:pointer;font-size:var(--text-body);font-weight:var(--fw-medium);font-family:inherit;-webkit-tap-highlight-color:transparent;display:flex;align-items:center;gap:5px;padding:8px 0;flex-shrink:0}
+#detail-title{font-size:var(--text-h2);font-weight:var(--fw-semibold);color:var(--text);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:var(--ls-snug)}
+#detail-body{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:env(safe-area-inset-bottom,0px)}
+
+/* ── STAT CARDS */
+.stat-cards{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:16px}
+.stat-card{background:var(--surface-1);border-radius:var(--radius-card);padding:16px;border:1px solid var(--border)}
+.stat-card.full{grid-column:1/-1}
+.stat-card.blue{background:var(--blue-bg);border-color:rgba(10,132,255,0.2)}
+.stat-card.green{background:var(--green-bg);border-color:rgba(48,209,88,0.2)}
+.stat-card.red{background:var(--danger-bg);border-color:rgba(255,69,58,0.2)}
+.sc-label{font-size:var(--text-micro);color:var(--text-muted);margin-bottom:6px;font-weight:var(--fw-medium)}
+.sc-value{font-size:var(--text-h2);font-weight:var(--fw-bold);color:var(--text);letter-spacing:var(--ls-snug);line-height:1.2}
+.sc-sub{font-size:var(--text-micro);color:var(--text-muted);margin-top:4px}
+
+/* ── CATEGORY BARS */
+.cat-bar-row{display:flex;align-items:center;gap:10px;padding:7px 16px}
+.cat-bar-name{font-size:var(--text-caption);color:var(--text-sub);width:38px;flex-shrink:0}
+.cat-bar-track{flex:1;height:8px;background:var(--surface-3);border-radius:var(--radius-pill);overflow:hidden}
+.cat-bar-fill{height:100%;border-radius:var(--radius-pill);transition:width .4s ease}
+.cat-bar-val{font-size:var(--text-micro);color:var(--text-muted);width:90px;text-align:right;flex-shrink:0}
+
+/* ── TIMELINE */
+.tl-date{padding:14px 16px 6px;font-size:var(--text-caption);font-weight:var(--fw-semibold);color:var(--text-muted);letter-spacing:var(--ls-normal)}
+.tl-item{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--border)}
+.tl-item:last-child{border-bottom:none}
+.tl-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.tl-info{flex:1;min-width:0}
+.tl-name{font-size:var(--text-caption);color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tl-sub{font-size:var(--text-micro);color:var(--text-muted);margin-top:2px;display:flex;align-items:center;gap:5px}
+.tl-amt{text-align:right;flex-shrink:0}
+.tl-amt-local{font-size:var(--text-caption);font-weight:var(--fw-semibold);color:var(--text)}
+.tl-amt-krw{font-size:var(--text-micro);color:var(--text-muted)}
+
+/* ── MANAGE */
+.manage-card{background:var(--surface-1);border-radius:var(--radius-card);margin:16px 16px 0;border:1px solid var(--border);padding:16px 0 4px}
+.manage-card-title{font-size:var(--text-caption);font-weight:var(--fw-semibold);color:var(--text-muted);letter-spacing:var(--ls-wider);text-transform:uppercase;padding:0 16px 12px}
+.mg-trip-row{display:flex;align-items:center;gap:12px;padding:14px 16px;border-top:1px solid var(--border)}
+.mg-trip-info{flex:1;min-width:0}
+.mg-trip-title{font-size:var(--text-body);font-weight:var(--fw-medium);color:var(--text);letter-spacing:var(--ls-snug)}
+.mg-trip-dates{font-size:var(--text-micro);color:var(--text-muted);margin-top:2px}
+
+/* ── ACTION SHEET */
+.sheet-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:350;display:none;align-items:flex-end;justify-content:center}
+.sheet-overlay.show{display:flex}
+.sheet-box{background:var(--surface-1);border-radius:20px 20px 0 0;padding:0 0 calc(16px + env(safe-area-inset-bottom,0px));width:100%;max-width:430px}
+.sheet-title{font-size:var(--text-caption);font-weight:var(--fw-medium);color:var(--text-muted);text-align:center;padding:16px 20px 14px;border-bottom:1px solid var(--border-mid)}
+.sheet-btn{width:100%;min-height:54px;border:none;border-bottom:1px solid var(--border);background:transparent;color:var(--text);font-size:var(--text-body);font-weight:var(--fw-regular);cursor:pointer;font-family:inherit;-webkit-tap-highlight-color:transparent;transition:background .15s;padding:0 20px}
+.sheet-btn:active{background:var(--surface-2)}
+.sheet-btn.danger{color:var(--danger)}
+.sheet-btn.cancel{color:var(--text-muted);border-bottom:none}
+
+/* ── PIN */
+#pin-overlay{display:none;position:fixed;inset:0;background:var(--bg);z-index:9999;flex-direction:column;align-items:center;justify-content:center}
+#pin-overlay.show{display:flex}
+#pin-box{display:flex;flex-direction:column;align-items:center;gap:18px;padding:52px 36px;background:var(--surface-1);border:1px solid var(--border);border-radius:var(--radius-xl);width:min(340px,90vw);box-shadow:0 12px 60px rgba(0,0,0,0.65)}
+#pin-logo{font-size:36px;margin-bottom:4px}
+#pin-title{font-size:var(--text-h1);font-weight:var(--fw-bold);color:var(--text)}
+#pin-subtitle{font-size:var(--text-caption);color:var(--text-muted)}
+#pin-input{width:100%;text-align:center;font-size:28px;letter-spacing:14px;padding:16px 12px;border:1px solid var(--border-mid);border-radius:var(--radius-md);background:var(--surface-2);color:var(--text);outline:none;font-family:inherit;transition:border-color .2s}
+#pin-input:focus{border-color:var(--accent)}
+#pin-error{font-size:var(--text-caption);font-weight:var(--fw-medium);color:var(--danger);display:none}
+#pin-submit{width:100%;height:54px;background:var(--accent);color:#0C0C0D;border:none;border-radius:var(--radius-md);font-size:var(--text-body);font-weight:var(--fw-bold);cursor:pointer;font-family:inherit;transition:opacity .2s}
+#pin-submit:disabled{opacity:.32}
+
+/* ── SPINNER */
+.spinner{width:22px;height:22px;border-radius:50%;border:2px solid rgba(255,255,255,0.08);border-top-color:rgba(245,245,247,0.6);animation:spin .8s linear infinite;display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-wrap{padding:48px 0;display:flex;justify-content:center}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div id="offline-bar" onclick="window.location.reload()">오프라인 모드 — 탭하여 재연결</div>
+  <div id="toast"></div>
+
+  <!-- ────── HEADER ────── -->
+  <header id="app-header">
+    <div id="header-title-wrap">
+      <span id="header-title">여행경비</span>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-muted)"><polyline points="6 9 12 15 18 9"/></svg>
+    </div>
+    <span id="header-version">v1.0</span>
+  </header>
+
+  <!-- ────── MAIN ────── -->
+  <main id="main-content">
+
+    <!-- 홈 탭 -->
+    <div id="tab-home" class="tab-content active">
+      <div class="home-header">
+        <span class="home-greeting">여행경비 관리</span>
+        <span class="home-title">내 여행 목록</span>
+      </div>
+      <div id="home-loading" class="loading-wrap"><div class="spinner"></div></div>
+      <div id="home-list"></div>
+      <div id="home-empty" class="empty-state" style="display:none">
+        <span class="empty-icon">✈️</span>
+        <span class="empty-title">여행이 없어요</span>
+        <span class="empty-sub">관리 탭에서 새 여행을 추가해보세요</span>
+      </div>
+    </div>
+
+    <!-- 환전 탭 -->
+    <div id="tab-exchange" class="tab-content">
+      <div class="trip-selector-bar">
+        <label class="form-label" for="ex-trip-sel" style="margin-bottom:6px">여행 선택</label>
+        <select id="ex-trip-sel" class="form-input">
+          <option value="">— 여행을 선택해주세요 —</option>
+        </select>
+      </div>
+      <div class="section-header">환전 기록 추가</div>
+      <div class="form-group">
+        <label class="form-label" for="ex-date">날짜</label>
+        <input id="ex-date" type="date" class="form-input">
+      </div>
+      <div class="form-group">
+        <label class="form-label" id="ex-local-lbl" for="ex-local">충전 금액 (현지 통화)</label>
+        <div class="input-with-suffix">
+          <input id="ex-local" type="number" class="form-input" placeholder="0" min="0" step="0.01" inputmode="decimal">
+          <span class="input-suffix" id="ex-cur-sfx">—</span>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="ex-krw">지불 원화 (KRW)</label>
+        <div class="input-with-suffix">
+          <input id="ex-krw" type="number" class="form-input" placeholder="0" min="0" step="1" inputmode="numeric">
+          <span class="input-suffix">원</span>
+        </div>
+        <div class="form-hint" id="ex-rate-hint"></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">결제자</label>
+        <div class="seg-ctrl" id="ex-payer-seg">
+          <button class="seg-btn active" data-payer="희" type="button">희</button>
+          <button class="seg-btn" data-payer="정" type="button">정</button>
+          <button class="seg-btn" data-payer="희정" type="button">희정</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <div class="form-error" id="ex-err"></div>
+        <button class="btn btn-primary" id="ex-save" type="button">저장하기</button>
+      </div>
+      <div class="section-header">환전 내역</div>
+      <div id="ex-list">
+        <div class="empty-sm"><span class="empty-icon">💱</span><span class="empty-sub">여행을 선택하면 환전 내역이 표시됩니다</span></div>
+      </div>
+    </div>
+
+    <!-- 지출 탭 -->
+    <div id="tab-expense" class="tab-content">
+      <div class="trip-selector-bar">
+        <label class="form-label" for="sp-trip-sel" style="margin-bottom:6px">여행 선택</label>
+        <select id="sp-trip-sel" class="form-input">
+          <option value="">— 여행을 선택해주세요 —</option>
+        </select>
+      </div>
+      <div class="section-header">지출 기록 추가</div>
+      <div class="form-group">
+        <label class="form-label" for="sp-date">날짜</label>
+        <input id="sp-date" type="date" class="form-input">
+      </div>
+      <div class="form-group">
+        <label class="form-label">카테고리</label>
+        <div class="chip-row" id="sp-cat-chips">
+          <button class="chip active" data-cat="식비" type="button">🍽 식비</button>
+          <button class="chip" data-cat="교통" type="button">🚌 교통</button>
+          <button class="chip" data-cat="숙박" type="button">🏨 숙박</button>
+          <button class="chip" data-cat="관광" type="button">🎡 관광</button>
+          <button class="chip" data-cat="기타" type="button">📦 기타</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="sp-detail">세부 항목</label>
+        <input id="sp-detail" type="text" class="form-input" placeholder="예: 황학루 입장료" maxlength="50" autocomplete="off" autocorrect="off" autocapitalize="off">
+      </div>
+      <div class="form-group">
+        <label class="form-label" id="sp-local-lbl" for="sp-local">금액 (현지 통화)</label>
+        <div class="input-with-suffix">
+          <input id="sp-local" type="number" class="form-input" placeholder="0" min="0" step="0.01" inputmode="decimal">
+          <span class="input-suffix" id="sp-cur-sfx">—</span>
+        </div>
+        <div class="form-hint highlight" id="sp-krw-hint"></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">결제자</label>
+        <div class="seg-ctrl" id="sp-payer-seg">
+          <button class="seg-btn active" data-payer="희" type="button">희</button>
+          <button class="seg-btn" data-payer="정" type="button">정</button>
+          <button class="seg-btn" data-payer="희정" type="button">희정</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <div class="form-error" id="sp-err"></div>
+        <button class="btn btn-primary" id="sp-save" type="button">저장하기</button>
+      </div>
+      <div class="section-header">지출 내역</div>
+      <div id="sp-list">
+        <div class="empty-sm"><span class="empty-icon">🧾</span><span class="empty-sub">여행을 선택하면 지출 내역이 표시됩니다</span></div>
+      </div>
+    </div>
+
+    <!-- 관리 탭 -->
+    <div id="tab-manage" class="tab-content">
+      <div class="manage-card">
+        <div class="manage-card-title">새 여행 만들기</div>
+        <div class="form-group">
+          <label class="form-label" for="mg-title">여행명</label>
+          <input id="mg-title" type="text" class="form-input" placeholder="예: 우한 식도락 투어" maxlength="40" autocomplete="off" autocorrect="off">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="mg-start">시작일</label>
+          <input id="mg-start" type="date" class="form-input">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="mg-end">종료일</label>
+          <input id="mg-end" type="date" class="form-input">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="mg-cur">기준 화폐</label>
+          <select id="mg-cur" class="form-input">
+            <option value="USD">USD — 미국 달러</option>
+            <option value="JPY">JPY — 일본 엔</option>
+            <option value="CNY">CNY — 중국 위안</option>
+            <option value="EUR">EUR — 유로</option>
+            <option value="THB">THB — 태국 바트</option>
+            <option value="VND">VND — 베트남 동</option>
+            <option value="TWD">TWD — 대만 달러</option>
+            <option value="HKD">HKD — 홍콩 달러</option>
+            <option value="MYR">MYR — 말레이시아 링깃</option>
+            <option value="SGD">SGD — 싱가포르 달러</option>
+            <option value="GBP">GBP — 영국 파운드</option>
+            <option value="기타">기타</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <div class="form-error" id="mg-err"></div>
+          <button class="btn btn-primary" id="mg-save" type="button">여행 만들기</button>
+        </div>
+      </div>
+      <div class="section-header" style="margin-top:8px">여행 목록</div>
+      <div id="mg-list"></div>
+    </div>
+
+  </main>
+
+  <!-- ────── BOTTOM TABS ────── -->
+  <nav id="bottom-tabs">
+    <button class="tab-btn active" data-tab="home" type="button">
+      <svg class="tab-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      홈
+    </button>
+    <button class="tab-btn" data-tab="exchange" type="button">
+      <svg class="tab-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+      환전
+    </button>
+    <button class="tab-btn" data-tab="expense" type="button">
+      <svg class="tab-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+      지출
+    </button>
+    <button class="tab-btn" data-tab="manage" type="button">
+      <svg class="tab-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      관리
+    </button>
+  </nav>
+
+  <!-- ────── DETAIL OVERLAY ────── -->
+  <div id="detail-overlay">
+    <div id="detail-header">
+      <button id="detail-close" type="button">
+        <svg width="8" height="14" viewBox="0 0 8 14" fill="none"><path d="M7 1L1 7L7 13" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        뒤로
+      </button>
+      <div id="detail-title">여행 상세</div>
+    </div>
+    <div id="detail-body"></div>
+  </div>
+
+  <!-- ────── APP SWITCHER ────── -->
+  <div id="app-switcher-overlay">
+    <div id="app-switcher-sheet">
+      <div class="app-switcher-title">앱 전환</div>
+      <button class="app-switcher-item current" type="button">
+        <span style="font-size:22px">✈️</span>
+        <span class="app-switcher-item-label">여행경비<small>현재 앱</small></span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color:#0a84ff"><polyline points="20 6 9 17 4 12"/></svg>
+      </button>
+      <button class="app-switcher-item" id="as-balance" type="button">
+        <span style="font-size:22px">🏠</span>
+        <span class="app-switcher-item-label">가계부<small>bhlee-dev.github.io/balance_hj</small></span>
+      </button>
+      <button class="app-switcher-item" id="as-snowball" type="button">
+        <span style="font-size:22px">📈</span>
+        <span class="app-switcher-item-label">우상향<small>snowball-hj.web.app</small></span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ────── DELETE ACTION SHEET ────── -->
+  <div id="del-overlay" class="sheet-overlay">
+    <div class="sheet-box">
+      <div class="sheet-title" id="del-msg">삭제하시겠습니까?</div>
+      <button class="sheet-btn danger" id="del-confirm" type="button">삭제</button>
+      <button class="sheet-btn cancel" id="del-cancel" type="button">취소</button>
+    </div>
+  </div>
+
+  <!-- ────── PIN ────── -->
+  <div id="pin-overlay" class="show">
+    <div id="pin-box">
+      <div id="pin-logo">✈️</div>
+      <div id="pin-title">여행경비</div>
+      <div id="pin-subtitle">PIN을 입력해주세요</div>
+      <input id="pin-input" type="password" inputmode="numeric" maxlength="8" placeholder="••••" autocomplete="off">
+      <div id="pin-error">PIN이 올바르지 않습니다.</div>
+      <button id="pin-submit" type="button">확인</button>
+    </div>
+  </div>
+
+</div><!-- /#app -->
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import {
+  initializeFirestore, persistentLocalCache, persistentSingleTabManager,
+  collection, doc, addDoc, getDocs, deleteDoc,
+  query, orderBy, serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import {
+  getAuth, signInWithEmailAndPassword,
+  onAuthStateChanged, setPersistence, browserLocalPersistence
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+// ─── Firebase 설정 — 배포 전 trip-hj 프로젝트 값으로 교체 ───
+const firebaseConfig = {
+  apiKey: "AIzaSyD_yoo89cFXvXVY0PbpXk6_0I6LRRj5L20",
+  authDomain: "trip-hj.firebaseapp.com",
+  projectId: "trip-hj",
+  storageBucket: "trip-hj.firebasestorage.app",
+  messagingSenderId: "776437046785",
+  appId: "1:776437046785:web:90416e5fdbee45a1702a00"
+};
+
+// GAS 배포 URL — Code.gs 배포 후 교체
+const GAS_URL    = 'https://script.google.com/macros/s/AKfycbwYbfKYb9pONHkSlCZjW_12qF9AoJfxN9avAZILwcSB44marIV48aN0gLO6GMfwQy2pTA/exec';
+const GAS_SECRET = 'trip2024secretABC';  // setupSecret()으로 설정
+
+const AUTH_USERS = [
+  { email: 'hj@ledger.com',    defaultPayer: '희' },
+  { email: 'jeong@ledger.com', defaultPayer: '정' }
+];
+
+const CATS = ['식비','교통','숙박','관광','기타'];
+const CAT_COLOR = { 교통:'#0A84FF', 숙박:'#5AC8FA', 식비:'#FF9F0A', 관광:'#30D158', 기타:'rgba(245,245,247,0.28)' };
+const DAY = ['일','월','화','수','목','금','토'];
+
+// ─── Firebase 초기화 ───
+const fbApp = initializeApp(firebaseConfig);
+const db    = initializeFirestore(fbApp, {
+  localCache: persistentLocalCache({ tabManager: persistentSingleTabManager() })
+});
+const auth  = getAuth(fbApp);
+
+// ─── 앱 상태 ───
+const S = {
+  trips:    [],
+  exchanges:[],
+  expenses: [],
+  exTripId: '',
+  spTripId: '',
+  exPayer:  '희',
+  spPayer:  '희',
+  spCat:    '식비',
+  detailId: null,
+  pending:  null,   // { type, id }
+};
+
+// ─── 유틸 ───
+const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const fmtKRW   = n => Number(n||0).toLocaleString('ko-KR') + '원';
+const fmtLocal = (n, cur) => Number(n||0).toLocaleString('ko-KR',{minimumFractionDigits:0,maximumFractionDigits:2}) + (cur ? ' ' + cur : '');
+const parseN   = s => parseFloat(String(s).replace(/[^0-9.]/g,'')) || 0;
+const todayStr = () => { const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
+const fmtDateFull  = s => { if(!s) return ''; const d=new Date(s+'T00:00:00'); return (d.getMonth()+1)+'월 '+d.getDate()+'일 ('+DAY[d.getDay()]+')'; };
+const fmtDateShort = s => { if(!s) return ''; const [,m,d]=s.split('-'); return m+'월 '+d+'일'; };
+
+let _toastTmr;
+function toast(msg, dur=2400) {
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.classList.add('show');
+  clearTimeout(_toastTmr);
+  _toastTmr=setTimeout(()=>el.classList.remove('show'),dur);
+}
+
+const tripById = id => S.trips.find(t=>t.id===id);
+const tripExs  = id => S.exchanges.filter(e=>e.tripId===id);
+const tripExps = id => S.expenses.filter(e=>e.tripId===id);
+
+function tripStats(tripId) {
+  const exs  = tripExs(tripId);
+  const exps = tripExps(tripId);
+  const exLocal = exs.reduce((s,e)=>s+(e.amountLocal||0),0);
+  const exKRW   = exs.reduce((s,e)=>s+(e.amountKRW||0),0);
+  const spLocal = exps.reduce((s,e)=>s+(e.amountLocal||0),0);
+  const spKRW   = exps.reduce((s,e)=>s+(e.amountKRW||0),0);
+  const avgRate = exLocal>0 ? exKRW/exLocal : 0;
+  const wallet  = exLocal - spLocal;
+  const byCat   = Object.fromEntries(CATS.map(c=>[c,0]));
+  exps.forEach(e=>{ const c=e.category||'기타'; byCat[c]=(byCat[c]||0)+(e.amountKRW||0); });
+  return { exLocal, exKRW, spLocal, spKRW, avgRate, wallet, byCat };
+}
+
+// ─── Firestore ───
+async function loadAll() {
+  const loadEl = document.getElementById('home-loading');
+  loadEl.style.display = 'flex';
+  try {
+    const [tSnap, eSnap, sSnap] = await Promise.all([
+      getDocs(query(collection(db,'trips'), orderBy('createdAt','desc'))),
+      getDocs(collection(db,'trip_exchanges')),
+      getDocs(collection(db,'trip_expenses'))
+    ]);
+    S.trips     = tSnap.docs.map(d=>({id:d.id,...d.data()}));
+    S.exchanges = eSnap.docs.map(d=>({id:d.id,...d.data()}));
+    S.expenses  = sSnap.docs.map(d=>({id:d.id,...d.data()}));
+  } catch(e) { console.error(e); toast('데이터를 불러오지 못했습니다',3500); }
+  finally { loadEl.style.display='none'; }
+  renderHome();
+  syncTripSelects();
+}
+
+async function addTrip(data) {
+  const ref = await addDoc(collection(db,'trips'), {...data, createdAt:serverTimestamp()});
+  S.trips.unshift({id:ref.id,...data, createdAt:new Date()});
+  return ref.id;
+}
+
+async function removeTrip(id) {
+  await deleteDoc(doc(db,'trips',id));
+  const dels = [
+    ...tripExs(id).map(e=>deleteDoc(doc(db,'trip_exchanges',e.id))),
+    ...tripExps(id).map(e=>deleteDoc(doc(db,'trip_expenses',e.id)))
+  ];
+  await Promise.all(dels);
+  S.trips     = S.trips.filter(t=>t.id!==id);
+  S.exchanges = S.exchanges.filter(e=>e.tripId!==id);
+  S.expenses  = S.expenses.filter(e=>e.tripId!==id);
+}
+
+async function addExchange(data) {
+  const ref = await addDoc(collection(db,'trip_exchanges'), {...data, createdAt:serverTimestamp()});
+  const item = {id:ref.id,...data};
+  S.exchanges.push(item);
+  const t = tripById(data.tripId);
+  gasBackup('addExchange', {tripTitle:t?.title||'', date:data.date, amountLocal:data.amountLocal, amountKRW:data.amountKRW, payer:data.payer, docId:ref.id});
+  return item;
+}
+
+async function removeExchange(id) {
+  await deleteDoc(doc(db,'trip_exchanges',id));
+  S.exchanges = S.exchanges.filter(e=>e.id!==id);
+}
+
+async function addExpense(data) {
+  const ref = await addDoc(collection(db,'trip_expenses'), {...data, createdAt:serverTimestamp()});
+  const item = {id:ref.id,...data};
+  S.expenses.push(item);
+  const t = tripById(data.tripId);
+  gasBackup('addTripExpense', {tripTitle:t?.title||'', date:data.date, category:data.category, detail:data.detail, amountLocal:data.amountLocal, amountKRW:data.amountKRW, payer:data.payer, docId:ref.id});
+  return item;
+}
+
+async function removeExpense(id) {
+  await deleteDoc(doc(db,'trip_expenses',id));
+  S.expenses = S.expenses.filter(e=>e.id!==id);
+}
+
+function gasBackup(action, data) {
+  if (!GAS_URL || GAS_URL.startsWith('YOUR_')) return;
+  fetch(GAS_URL, {
+    method:'POST', headers:{'Content-Type':'text/plain'},
+    body: JSON.stringify({action, secret:GAS_SECRET, data})
+  }).catch(()=>{});
+}
+
+// ─── 여행 선택 동기화 ───
+function syncTripSelects() {
+  const opts = ['<option value="">— 여행을 선택해주세요 —</option>',
+    ...S.trips.map(t=>`<option value="${esc(t.id)}">${esc(t.title)} (${esc(t.currency||'')})</option>`)
+  ].join('');
+  ['ex-trip-sel','sp-trip-sel'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(!el) return;
+    const cur=el.value; el.innerHTML=opts;
+    if(cur && S.trips.some(t=>t.id===cur)) el.value=cur;
+  });
+  renderManage();
+}
+
+function onExTripChange(id) {
+  S.exTripId = id;
+  const cur = tripById(id)?.currency||'—';
+  document.getElementById('ex-cur-sfx').textContent = cur;
+  document.getElementById('ex-local-lbl').textContent = `충전 금액 (${cur})`;
+  refreshExRateHint();
+  renderExList(id);
+}
+
+function onSpTripChange(id) {
+  S.spTripId = id;
+  const cur = tripById(id)?.currency||'—';
+  document.getElementById('sp-cur-sfx').textContent = cur;
+  document.getElementById('sp-local-lbl').textContent = `금액 (${cur})`;
+  refreshSpKrwHint();
+  renderSpList(id);
+}
+
+function refreshExRateHint() {
+  const hint = document.getElementById('ex-rate-hint');
+  const local = parseN(document.getElementById('ex-local').value);
+  const krw   = parseN(document.getElementById('ex-krw').value);
+  if (local>0 && krw>0) {
+    const cur = tripById(S.exTripId)?.currency||'';
+    hint.textContent = `이 환전 환율: ${(krw/local).toLocaleString('ko-KR',{maximumFractionDigits:2})} 원/${cur}`;
+    hint.className = 'form-hint highlight';
+  } else { hint.textContent=''; hint.className='form-hint'; }
+}
+
+function refreshSpKrwHint() {
+  const hint = document.getElementById('sp-krw-hint');
+  const local = parseN(document.getElementById('sp-local').value);
+  if (!local || !S.spTripId) { hint.textContent=''; return; }
+  const st = tripStats(S.spTripId);
+  if (st.avgRate<=0) { hint.textContent='환전 내역이 없어 원화 자동 계산 불가'; hint.className='form-hint'; return; }
+  const cur = tripById(S.spTripId)?.currency||'';
+  hint.textContent = `≈ ${fmtKRW(Math.round(local*st.avgRate))} (평균환율 ${st.avgRate.toLocaleString('ko-KR',{maximumFractionDigits:1})} 원/${cur})`;
+  hint.className = 'form-hint highlight';
+}
+
+// ─── 렌더: 홈 탭 ───
+function renderHome() {
+  const list  = document.getElementById('home-list');
+  const empty = document.getElementById('home-empty');
+  if (S.trips.length===0) { list.innerHTML=''; empty.style.display='flex'; return; }
+  empty.style.display='none';
+  list.innerHTML = S.trips.map(t => {
+    const st  = tripStats(t.id);
+    const cur = t.currency||'';
+    const dr  = [t.startDate,t.endDate].filter(Boolean).map(fmtDateShort).join(' ~ ')||'기간 미정';
+    const avgStr = st.avgRate>0
+      ? `<div class="trip-stat"><span class="trip-stat-label">평균환율</span><span class="trip-stat-val">${st.avgRate.toLocaleString('ko-KR',{maximumFractionDigits:1})} 원/${esc(cur)}</span></div>`
+      : '';
+    return `
+    <button class="trip-card" data-id="${esc(t.id)}" type="button">
+      <div class="trip-card-top">
+        <span class="trip-card-title">${esc(t.title)}</span>
+        <span class="trip-card-currency">${esc(cur)}</span>
+      </div>
+      <div class="trip-card-dates">${esc(dr)}</div>
+      <div class="trip-card-stats">
+        <div class="trip-stat"><span class="trip-stat-label">총 지출</span><span class="trip-stat-val">${fmtKRW(st.spKRW)}</span></div>
+        <div class="trip-stat"><span class="trip-stat-label">총 환전</span><span class="trip-stat-val">${fmtKRW(st.exKRW)}</span></div>
+        ${avgStr}
+      </div>
+    </button>`;
+  }).join('');
+  list.querySelectorAll('.trip-card').forEach(c=>c.addEventListener('click',()=>openDetail(c.dataset.id)));
+}
+
+// ─── 렌더: 상세 오버레이 ───
+function openDetail(id) {
+  const t = tripById(id); if(!t) return;
+  S.detailId = id;
+  document.getElementById('detail-title').textContent = t.title;
+  renderDetailBody(t);
+  document.getElementById('detail-overlay').classList.add('show');
+  document.getElementById('bottom-tabs').style.display = 'none';
+}
+
+function closeDetail() {
+  document.getElementById('detail-overlay').classList.remove('show');
+  document.getElementById('bottom-tabs').style.display = '';
+  S.detailId = null;
+}
+
+function renderDetailBody(trip) {
+  const st  = tripStats(trip.id);
+  const cur = trip.currency||'';
+  const exps = tripExps(trip.id).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  const walletClass = st.wallet<0 ? 'red' : 'blue';
+  const walletKRW = st.avgRate>0 ? '≈ '+fmtKRW(Math.round(st.wallet*st.avgRate)) : '';
+
+  // category bars
+  const catBars = CATS.map(cat=>{
+    const v=st.byCat[cat]||0;
+    const pct=st.spKRW>0 ? (v/st.spKRW*100).toFixed(1) : 0;
+    return `<div class="cat-bar-row">
+      <span class="cat-bar-name">${esc(cat)}</span>
+      <div class="cat-bar-track"><div class="cat-bar-fill" style="width:${pct}%;background:${CAT_COLOR[cat]||'rgba(245,245,247,0.3)'}"></div></div>
+      <span class="cat-bar-val">${fmtKRW(v)}</span>
+    </div>`;
+  }).join('');
+
+  // timeline
+  const byDate={};
+  exps.forEach(e=>{const d=e.date||'';if(!byDate[d])byDate[d]=[];byDate[d].push(e);});
+  const tl = Object.keys(byDate).sort((a,b)=>b.localeCompare(a)).map(date=>{
+    const rows = byDate[date].map(e=>{
+      const pp = e.payer==='희'?'<span class="pill-h">희</span>':e.payer==='정'?'<span class="pill-w">정</span>':'<span class="pill-j">공동</span>';
+      const cls = `cpill cpill-${esc(e.category||'기타')}`;
+      return `<div class="tl-item">
+        <div class="tl-dot" style="background:${CAT_COLOR[e.category]||'rgba(245,245,247,0.3)'}"></div>
+        <div class="tl-info">
+          <div class="tl-name">${esc(e.detail||'(내역 없음)')}</div>
+          <div class="tl-sub"><span class="${esc(cls)}">${esc(e.category||'기타')}</span>${pp}</div>
+        </div>
+        <div class="tl-amt">
+          <div class="tl-amt-local">${fmtLocal(e.amountLocal,cur)}</div>
+          <div class="tl-amt-krw">${fmtKRW(e.amountKRW)}</div>
+        </div>
+      </div>`;
+    }).join('');
+    return `<div class="tl-date">${esc(fmtDateFull(date))}</div>${rows}`;
+  }).join('');
+
+  document.getElementById('detail-body').innerHTML = `
+    <div class="stat-cards">
+      <div class="stat-card">
+        <div class="sc-label">총 지출</div>
+        <div class="sc-value">${fmtKRW(st.spKRW)}</div>
+        <div class="sc-sub">${fmtLocal(st.spLocal,cur)}</div>
+      </div>
+      <div class="stat-card">
+        <div class="sc-label">총 환전</div>
+        <div class="sc-value">${fmtKRW(st.exKRW)}</div>
+        <div class="sc-sub">${fmtLocal(st.exLocal,cur)}</div>
+      </div>
+      <div class="stat-card ${walletClass} full">
+        <div class="sc-label">트래블월렛 잔액</div>
+        <div class="sc-value">${fmtLocal(st.wallet,cur)}</div>
+        <div class="sc-sub">${walletKRW||'환전 내역이 없습니다'}</div>
+      </div>
+      ${st.avgRate>0?`<div class="stat-card full">
+        <div class="sc-label">가중 평균 환율</div>
+        <div class="sc-value">${st.avgRate.toLocaleString('ko-KR',{maximumFractionDigits:2})}<span style="font-size:var(--text-caption);font-weight:var(--fw-regular);color:var(--text-sub)"> 원/${esc(cur)}</span></div>
+        <div class="sc-sub">${tripExs(trip.id).length}건 환전 기준</div>
+      </div>`:''}
+    </div>
+    ${st.spKRW>0?`<div class="section-header">카테고리별 지출</div>${catBars}`:''}
+    ${exps.length>0?`<div class="section-header">일자별 지출 내역</div><div class="list-wrap">${tl}</div>`:''}
+    <div style="padding:24px 16px 8px">
+      <button class="btn btn-secondary" id="export-btn" type="button" style="border:1px solid var(--border-mid)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        가계부로 내보내기
+      </button>
+    </div>
+    <div style="height:env(safe-area-inset-bottom,0px)"></div>
+  `;
+  document.getElementById('export-btn')?.addEventListener('click',()=>{
+    alert('가계부의 "해외여행" 항목으로 총액 연동 기능은 추후 구현 예정입니다.');
+  });
+}
+
+// ─── 렌더: 환전 목록 ───
+function renderExList(tripId) {
+  const el  = document.getElementById('ex-list');
+  const cur = tripById(tripId)?.currency||'';
+  const exs = tripExs(tripId).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  if (!tripId||exs.length===0) {
+    el.innerHTML=`<div class="empty-sm"><span class="empty-icon">💱</span><span class="empty-sub">${tripId?'환전 내역이 없습니다':'여행을 선택하면 환전 내역이 표시됩니다'}</span></div>`;
+    return;
+  }
+  el.innerHTML = `<div class="list-wrap">${exs.map(ex=>{
+    const pp = ex.payer==='희'?'<span class="pill-h">희</span>':ex.payer==='정'?'<span class="pill-w">정</span>':'<span class="pill-j">공동</span>';
+    const rate = ex.amountLocal>0 ? (ex.amountKRW/ex.amountLocal).toFixed(1) : '—';
+    return `<div class="list-item">
+      <div class="list-item-body">
+        <div class="list-item-date">${esc(fmtDateFull(ex.date))}</div>
+        <div class="list-item-title">환전 ${pp}</div>
+        <div class="list-item-meta">환율 ${rate} 원/${esc(cur)}</div>
+      </div>
+      <div class="list-item-right">
+        <div class="list-item-local">+${fmtLocal(ex.amountLocal,cur)}</div>
+        <div class="list-item-krw">${fmtKRW(ex.amountKRW)}</div>
+      </div>
+      <button class="icon-btn" data-del-ex="${esc(ex.id)}" type="button" aria-label="삭제">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+      </button>
+    </div>`;
+  }).join('')}</div>`;
+  el.querySelectorAll('[data-del-ex]').forEach(b=>b.addEventListener('click',()=>askDel('exchange',b.dataset.delEx,'이 환전 내역을 삭제할까요?')));
+}
+
+// ─── 렌더: 지출 목록 ───
+function renderSpList(tripId) {
+  const el  = document.getElementById('sp-list');
+  const cur = tripById(tripId)?.currency||'';
+  const exps = tripExps(tripId).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  if (!tripId||exps.length===0) {
+    el.innerHTML=`<div class="empty-sm"><span class="empty-icon">🧾</span><span class="empty-sub">${tripId?'지출 내역이 없습니다':'여행을 선택하면 지출 내역이 표시됩니다'}</span></div>`;
+    return;
+  }
+  el.innerHTML = `<div class="list-wrap">${exps.map(ex=>{
+    const pp = ex.payer==='희'?'<span class="pill-h">희</span>':ex.payer==='정'?'<span class="pill-w">정</span>':'<span class="pill-j">공동</span>';
+    const cls = `cpill cpill-${esc(ex.category||'기타')}`;
+    return `<div class="list-item">
+      <div class="list-item-body">
+        <div class="list-item-date">${esc(fmtDateFull(ex.date))}</div>
+        <div class="list-item-title">${esc(ex.detail||'(내역 없음)')}</div>
+        <div class="list-item-meta"><span class="${esc(cls)}">${esc(ex.category||'기타')}</span>${pp}</div>
+      </div>
+      <div class="list-item-right">
+        <div class="list-item-local">${fmtLocal(ex.amountLocal,cur)}</div>
+        <div class="list-item-krw">${fmtKRW(ex.amountKRW)}</div>
+      </div>
+      <button class="icon-btn" data-del-sp="${esc(ex.id)}" type="button" aria-label="삭제">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+      </button>
+    </div>`;
+  }).join('')}</div>`;
+  el.querySelectorAll('[data-del-sp]').forEach(b=>b.addEventListener('click',()=>askDel('expense',b.dataset.delSp,'이 지출 내역을 삭제할까요?')));
+}
+
+// ─── 렌더: 관리 탭 ───
+function renderManage() {
+  const el = document.getElementById('mg-list');
+  if (S.trips.length===0) {
+    el.innerHTML=`<div class="empty-sm"><span class="empty-icon">🗺️</span><span class="empty-sub">아직 여행이 없습니다</span></div>`;
+    return;
+  }
+  el.innerHTML = S.trips.map(t=>{
+    const dr=[t.startDate,t.endDate].filter(Boolean).map(fmtDateShort).join(' ~ ')||'기간 미정';
+    return `<div class="mg-trip-row">
+      <div class="mg-trip-info">
+        <div class="mg-trip-title">${esc(t.title)} <span class="trip-card-currency">${esc(t.currency||'')}</span></div>
+        <div class="mg-trip-dates">${esc(dr)}</div>
+      </div>
+      <button class="icon-btn" data-del-trip="${esc(t.id)}" data-trip-name="${esc(t.title)}" type="button" aria-label="삭제">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+      </button>
+    </div>`;
+  }).join('');
+  el.querySelectorAll('[data-del-trip]').forEach(b=>
+    b.addEventListener('click',()=>askDel('trip',b.dataset.delTrip,`"${b.dataset.tripName}" 여행과 모든 관련 데이터를 삭제할까요?`))
+  );
+}
+
+// ─── Delete 확인 액션시트 ───
+function askDel(type, id, msg) {
+  S.pending = {type, id};
+  document.getElementById('del-msg').textContent = msg;
+  document.getElementById('del-overlay').classList.add('show');
+}
+
+function closeDel() {
+  document.getElementById('del-overlay').classList.remove('show');
+}
+
+async function confirmDel() {
+  closeDel();
+  if (!S.pending) return;
+  const {type, id} = S.pending;
+  S.pending = null;
+  try {
+    if (type==='exchange') {
+      await removeExchange(id);
+      renderExList(S.exTripId);
+      renderHome();
+      if (S.detailId) { const t=tripById(S.detailId); if(t) renderDetailBody(t); }
+      toast('환전 내역을 삭제했습니다');
+    } else if (type==='expense') {
+      await removeExpense(id);
+      renderSpList(S.spTripId);
+      renderHome();
+      if (S.detailId) { const t=tripById(S.detailId); if(t) renderDetailBody(t); }
+      toast('지출 내역을 삭제했습니다');
+    } else if (type==='trip') {
+      await removeTrip(id);
+      if (S.exTripId===id) { S.exTripId=''; document.getElementById('ex-trip-sel').value=''; renderExList(''); }
+      if (S.spTripId===id) { S.spTripId=''; document.getElementById('sp-trip-sel').value=''; renderSpList(''); }
+      syncTripSelects();
+      renderHome();
+      toast('여행을 삭제했습니다');
+    }
+  } catch(e) { console.error(e); toast('삭제에 실패했습니다',3500); }
+}
+
+// ─── 탭 전환 ───
+function showTab(tab) {
+  S.currentTab = tab;
+  document.querySelectorAll('.tab-content').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));
+  const el=document.getElementById('tab-'+tab);
+  if(el) el.classList.add('active');
+  if(tab==='manage') renderManage();
+}
+
+// ─── Auth ───
+async function submitPin() {
+  const pin = document.getElementById('pin-input').value.trim();
+  if (!pin) return;
+  const btn = document.getElementById('pin-submit');
+  const err = document.getElementById('pin-error');
+  btn.disabled=true; btn.textContent='확인 중...'; err.style.display='none';
+  const pw = pin+'00';
+  try {
+    await setPersistence(auth, browserLocalPersistence);
+    let matched=null;
+    for (const u of AUTH_USERS) {
+      try {
+        await signInWithEmailAndPassword(auth, u.email, pw);
+        matched=u; break;
+      } catch(e) {
+        const c=e?.code||'';
+        if (c!=='auth/wrong-password'&&c!=='auth/invalid-credential'&&c!=='auth/user-not-found') throw e;
+      }
+    }
+    if (!matched) throw new Error('auth/wrong-pin');
+    document.getElementById('pin-input').value='';
+  } catch(e) {
+    err.style.display='block';
+  } finally {
+    btn.disabled=false; btn.textContent='확인';
+  }
+}
+
+function startApp() {
+  document.getElementById('pin-overlay').classList.remove('show');
+  document.getElementById('ex-date').value = todayStr();
+  document.getElementById('sp-date').value = todayStr();
+  loadAll();
+}
+
+// ─── 이벤트 연결 ───
+
+// PIN
+document.getElementById('pin-submit').addEventListener('click', submitPin);
+document.getElementById('pin-input').addEventListener('keydown', e=>{ if(e.key==='Enter') submitPin(); });
+
+// 탭 버튼
+document.querySelectorAll('.tab-btn').forEach(b=>b.addEventListener('click',()=>showTab(b.dataset.tab)));
+
+// 헤더 (앱 스위처)
+document.getElementById('header-title-wrap').addEventListener('click',()=>{
+  document.getElementById('app-switcher-overlay').classList.add('show');
+});
+document.getElementById('app-switcher-overlay').addEventListener('click',e=>{
+  if(e.target===document.getElementById('app-switcher-overlay'))
+    document.getElementById('app-switcher-overlay').classList.remove('show');
+});
+document.getElementById('as-balance').addEventListener('click',()=>{ window.location.href='https://bhlee-dev.github.io/balance_hj'; });
+document.getElementById('as-snowball').addEventListener('click',()=>{ window.location.href='https://snowball-hj.web.app'; });
+
+// 상세 오버레이
+document.getElementById('detail-close').addEventListener('click', closeDetail);
+
+// 여행 선택
+document.getElementById('ex-trip-sel').addEventListener('change',e=>onExTripChange(e.target.value));
+document.getElementById('sp-trip-sel').addEventListener('change',e=>onSpTripChange(e.target.value));
+
+// 환전 폼
+document.getElementById('ex-local').addEventListener('input', refreshExRateHint);
+document.getElementById('ex-krw').addEventListener('input', refreshExRateHint);
+document.querySelectorAll('#ex-payer-seg .seg-btn').forEach(b=>b.addEventListener('click',()=>{
+  S.exPayer=b.dataset.payer;
+  document.querySelectorAll('#ex-payer-seg .seg-btn').forEach(x=>x.classList.toggle('active',x===b));
+}));
+document.getElementById('ex-save').addEventListener('click', async()=>{
+  const err=document.getElementById('ex-err'); err.classList.remove('show');
+  const tripId=S.exTripId, date=document.getElementById('ex-date').value;
+  const local=parseN(document.getElementById('ex-local').value), krw=parseN(document.getElementById('ex-krw').value);
+  if(!tripId){err.textContent='여행을 선택해주세요';err.classList.add('show');return;}
+  if(!date){err.textContent='날짜를 입력해주세요';err.classList.add('show');return;}
+  if(local<=0){err.textContent='현지 금액을 입력해주세요';err.classList.add('show');return;}
+  if(krw<=0){err.textContent='원화 금액을 입력해주세요';err.classList.add('show');return;}
+  const btn=document.getElementById('ex-save'); btn.disabled=true; btn.textContent='저장 중...';
+  try {
+    await addExchange({tripId, date, amountLocal:local, amountKRW:krw, payer:S.exPayer});
+    document.getElementById('ex-local').value='';
+    document.getElementById('ex-krw').value='';
+    document.getElementById('ex-rate-hint').textContent='';
+    document.getElementById('ex-date').value=todayStr();
+    renderExList(tripId); renderHome();
+    toast('환전 내역을 저장했습니다');
+  } catch(e){ err.textContent='저장에 실패했습니다.'; err.classList.add('show'); }
+  finally { btn.disabled=false; btn.textContent='저장하기'; }
+});
+
+// 지출 폼
+document.getElementById('sp-local').addEventListener('input', refreshSpKrwHint);
+document.querySelectorAll('#sp-cat-chips .chip').forEach(b=>b.addEventListener('click',()=>{
+  S.spCat=b.dataset.cat;
+  document.querySelectorAll('#sp-cat-chips .chip').forEach(x=>x.classList.toggle('active',x===b));
+}));
+document.querySelectorAll('#sp-payer-seg .seg-btn').forEach(b=>b.addEventListener('click',()=>{
+  S.spPayer=b.dataset.payer;
+  document.querySelectorAll('#sp-payer-seg .seg-btn').forEach(x=>x.classList.toggle('active',x===b));
+}));
+document.getElementById('sp-save').addEventListener('click', async()=>{
+  const err=document.getElementById('sp-err'); err.classList.remove('show');
+  const tripId=S.spTripId, date=document.getElementById('sp-date').value;
+  const detail=document.getElementById('sp-detail').value.trim();
+  const local=parseN(document.getElementById('sp-local').value);
+  if(!tripId){err.textContent='여행을 선택해주세요';err.classList.add('show');return;}
+  if(!date){err.textContent='날짜를 입력해주세요';err.classList.add('show');return;}
+  if(!detail){err.textContent='세부 항목을 입력해주세요';err.classList.add('show');return;}
+  if(local<=0){err.textContent='금액을 입력해주세요';err.classList.add('show');return;}
+  const st=tripStats(tripId);
+  const krw=st.avgRate>0 ? Math.round(local*st.avgRate) : 0;
+  const btn=document.getElementById('sp-save'); btn.disabled=true; btn.textContent='저장 중...';
+  try {
+    await addExpense({tripId, date, category:S.spCat, detail, amountLocal:local, amountKRW:krw, payer:S.spPayer});
+    document.getElementById('sp-detail').value='';
+    document.getElementById('sp-local').value='';
+    document.getElementById('sp-krw-hint').textContent='';
+    document.getElementById('sp-date').value=todayStr();
+    renderSpList(tripId); renderHome();
+    toast('지출 내역을 저장했습니다');
+  } catch(e){ err.textContent='저장에 실패했습니다.'; err.classList.add('show'); }
+  finally { btn.disabled=false; btn.textContent='저장하기'; }
+});
+
+// 관리 폼
+document.getElementById('mg-save').addEventListener('click', async()=>{
+  const err=document.getElementById('mg-err'); err.classList.remove('show');
+  const title=document.getElementById('mg-title').value.trim();
+  const startDate=document.getElementById('mg-start').value;
+  const endDate=document.getElementById('mg-end').value;
+  const currency=document.getElementById('mg-cur').value;
+  if(!title){err.textContent='여행명을 입력해주세요';err.classList.add('show');return;}
+  if(!currency){err.textContent='화폐를 선택해주세요';err.classList.add('show');return;}
+  const btn=document.getElementById('mg-save'); btn.disabled=true; btn.textContent='저장 중...';
+  try {
+    await addTrip({title, startDate, endDate, currency});
+    document.getElementById('mg-title').value='';
+    document.getElementById('mg-start').value='';
+    document.getElementById('mg-end').value='';
+    syncTripSelects(); renderHome();
+    toast('새 여행을 만들었습니다');
+  } catch(e){ err.textContent='저장에 실패했습니다.'; err.classList.add('show'); }
+  finally { btn.disabled=false; btn.textContent='여행 만들기'; }
+});
+
+// 삭제 액션시트
+document.getElementById('del-confirm').addEventListener('click', confirmDel);
+document.getElementById('del-cancel').addEventListener('click', closeDel);
+document.getElementById('del-overlay').addEventListener('click',e=>{
+  if(e.target===document.getElementById('del-overlay')) closeDel();
+});
+
+// 오프라인
+window.addEventListener('online', ()=>document.getElementById('offline-bar').classList.remove('show'));
+window.addEventListener('offline',()=>document.getElementById('offline-bar').classList.add('show'));
+
+// Firebase Auth 상태
+onAuthStateChanged(auth, user=>{
+  if (user) {
+    const match = AUTH_USERS.find(u=>u.email===user.email);
+    if (match) {
+      S.exPayer = match.defaultPayer;
+      S.spPayer = match.defaultPayer;
+      ['ex-payer-seg','sp-payer-seg'].forEach(segId=>{
+        document.querySelectorAll(`#${segId} .seg-btn`).forEach(b=>
+          b.classList.toggle('active', b.dataset.payer===match.defaultPayer)
+        );
+      });
+    }
+    startApp();
+  } else {
+    document.getElementById('pin-overlay').classList.add('show');
+    setTimeout(()=>document.getElementById('pin-input').focus(), 100);
+  }
+});
+</script>
+</body>
+</html>

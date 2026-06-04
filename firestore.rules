@@ -1,0 +1,21 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isAllowed() {
+      return request.auth != null &&
+        request.auth.token.email in [
+          'hj@ledger.com',
+          'jeong@ledger.com'
+        ];
+    }
+    match /trips/{docId} {
+      allow read, write: if isAllowed();
+    }
+    match /trip_exchanges/{docId} {
+      allow read, write: if isAllowed();
+    }
+    match /trip_expenses/{docId} {
+      allow read, write: if isAllowed();
+    }
+  }
+}
