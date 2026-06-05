@@ -336,14 +336,6 @@ input[type="date"].form-input{font-size:var(--text-body);-webkit-appearance:none
         <div class="form-hint" id="ex-rate-hint"></div>
       </div>
       <div class="form-group">
-        <label class="form-label">결제자</label>
-        <div class="seg-ctrl" id="ex-payer-seg">
-          <button class="seg-btn active" data-payer="희" type="button">희</button>
-          <button class="seg-btn" data-payer="정" type="button">정</button>
-          <button class="seg-btn" data-payer="희정" type="button">희정</button>
-        </div>
-      </div>
-      <div class="form-group">
         <div class="form-error" id="ex-err"></div>
         <button class="btn btn-primary" id="ex-save" type="button">저장하기</button>
       </div>
@@ -387,14 +379,6 @@ input[type="date"].form-input{font-size:var(--text-body);-webkit-appearance:none
           <span class="input-suffix" id="sp-cur-sfx">—</span>
         </div>
         <div class="form-hint highlight" id="sp-krw-hint"></div>
-      </div>
-      <div class="form-group">
-        <label class="form-label">결제자</label>
-        <div class="seg-ctrl" id="sp-payer-seg">
-          <button class="seg-btn active" data-payer="희" type="button">희</button>
-          <button class="seg-btn" data-payer="정" type="button">정</button>
-          <button class="seg-btn" data-payer="희정" type="button">희정</button>
-        </div>
       </div>
       <div class="form-group">
         <div class="form-error" id="sp-err"></div>
@@ -552,8 +536,8 @@ const GAS_URL    = 'https://script.google.com/macros/s/AKfycbwYbfKYb9pONHkSlCZjW
 const GAS_SECRET = 'trip2024secretABC';  // setupSecret()으로 설정
 
 const AUTH_USERS = [
-  { email: 'hj@ledger.com',    defaultPayer: '희' },
-  { email: 'jeong@ledger.com', defaultPayer: '정' }
+  { email: 'hj@ledger.com' },
+  { email: 'jeong@ledger.com' }
 ];
 
 const CATS = ['식비','교통','숙박','관광','기타'];
@@ -574,8 +558,6 @@ const S = {
   expenses: [],
   exTripId: '',
   spTripId: '',
-  exPayer:  '희',
-  spPayer:  '희',
   spCat:    '식비',
   detailId: null,
   pending:  null,   // { type, id }
@@ -812,13 +794,12 @@ function renderDetailBody(trip) {
   exps.forEach(e=>{const d=e.date||'';if(!byDate[d])byDate[d]=[];byDate[d].push(e);});
   const tl = Object.keys(byDate).sort((a,b)=>b.localeCompare(a)).map(date=>{
     const rows = byDate[date].map(e=>{
-      const pp = e.payer==='희'?'<span class="pill-h">희</span>':e.payer==='정'?'<span class="pill-w">정</span>':'<span class="pill-j">공동</span>';
       const cls = `cpill cpill-${esc(e.category||'기타')}`;
       return `<div class="tl-item">
         <div class="tl-dot" style="background:${CAT_COLOR[e.category]||'rgba(245,245,247,0.3)'}"></div>
         <div class="tl-info">
           <div class="tl-name">${esc(e.detail||'(내역 없음)')}</div>
-          <div class="tl-sub"><span class="${esc(cls)}">${esc(e.category||'기타')}</span>${pp}</div>
+          <div class="tl-sub"><span class="${esc(cls)}">${esc(e.category||'기타')}</span></div>
         </div>
         <div class="tl-amt">
           <div class="tl-amt-local">${fmtLocal(e.amountLocal,cur)}</div>
@@ -877,12 +858,11 @@ function renderExList(tripId) {
     return;
   }
   el.innerHTML = `<div class="list-wrap">${exs.map(ex=>{
-    const pp = ex.payer==='희'?'<span class="pill-h">희</span>':ex.payer==='정'?'<span class="pill-w">정</span>':'<span class="pill-j">공동</span>';
     const rate = ex.amountLocal>0 ? (ex.amountKRW/ex.amountLocal).toFixed(1) : '—';
     return `<div class="list-item">
       <div class="list-item-body">
         <div class="list-item-date">${esc(fmtDateFull(ex.date))}</div>
-        <div class="list-item-title">환전 ${pp}</div>
+        <div class="list-item-title">환전</div>
         <div class="list-item-meta">환율 ${rate} 원/${esc(cur)}</div>
       </div>
       <div class="list-item-right">
@@ -907,13 +887,12 @@ function renderSpList(tripId) {
     return;
   }
   el.innerHTML = `<div class="list-wrap">${exps.map(ex=>{
-    const pp = ex.payer==='희'?'<span class="pill-h">희</span>':ex.payer==='정'?'<span class="pill-w">정</span>':'<span class="pill-j">공동</span>';
     const cls = `cpill cpill-${esc(ex.category||'기타')}`;
     return `<div class="list-item">
       <div class="list-item-body">
         <div class="list-item-date">${esc(fmtDateFull(ex.date))}</div>
         <div class="list-item-title">${esc(ex.detail||'(내역 없음)')}</div>
-        <div class="list-item-meta"><span class="${esc(cls)}">${esc(ex.category||'기타')}</span>${pp}</div>
+        <div class="list-item-meta"><span class="${esc(cls)}">${esc(ex.category||'기타')}</span></div>
       </div>
       <div class="list-item-right">
         <div class="list-item-local">${fmtLocal(ex.amountLocal,cur)}</div>
@@ -1067,10 +1046,6 @@ document.getElementById('sp-trip-sel').addEventListener('change',e=>onSpTripChan
 // 환전 폼
 document.getElementById('ex-local').addEventListener('input', refreshExRateHint);
 document.getElementById('ex-krw').addEventListener('input', refreshExRateHint);
-document.querySelectorAll('#ex-payer-seg .seg-btn').forEach(b=>b.addEventListener('click',()=>{
-  S.exPayer=b.dataset.payer;
-  document.querySelectorAll('#ex-payer-seg .seg-btn').forEach(x=>x.classList.toggle('active',x===b));
-}));
 document.getElementById('ex-save').addEventListener('click', async()=>{
   const err=document.getElementById('ex-err'); err.classList.remove('show');
   const tripId=S.exTripId, date=document.getElementById('ex-date').value;
@@ -1081,7 +1056,7 @@ document.getElementById('ex-save').addEventListener('click', async()=>{
   if(krw<=0){err.textContent='원화 금액을 입력해주세요';err.classList.add('show');return;}
   const btn=document.getElementById('ex-save'); btn.disabled=true; btn.textContent='저장 중...';
   try {
-    await addExchange({tripId, date, amountLocal:local, amountKRW:krw, payer:S.exPayer});
+    await addExchange({tripId, date, amountLocal:local, amountKRW:krw});
     document.getElementById('ex-local').value='';
     document.getElementById('ex-krw').value='';
     document.getElementById('ex-rate-hint').textContent='';
@@ -1098,10 +1073,6 @@ document.querySelectorAll('#sp-cat-chips .chip').forEach(b=>b.addEventListener('
   S.spCat=b.dataset.cat;
   document.querySelectorAll('#sp-cat-chips .chip').forEach(x=>x.classList.toggle('active',x===b));
 }));
-document.querySelectorAll('#sp-payer-seg .seg-btn').forEach(b=>b.addEventListener('click',()=>{
-  S.spPayer=b.dataset.payer;
-  document.querySelectorAll('#sp-payer-seg .seg-btn').forEach(x=>x.classList.toggle('active',x===b));
-}));
 document.getElementById('sp-save').addEventListener('click', async()=>{
   const err=document.getElementById('sp-err'); err.classList.remove('show');
   const tripId=S.spTripId, date=document.getElementById('sp-date').value;
@@ -1115,7 +1086,7 @@ document.getElementById('sp-save').addEventListener('click', async()=>{
   const krw=st.avgRate>0 ? Math.round(local*st.avgRate) : 0;
   const btn=document.getElementById('sp-save'); btn.disabled=true; btn.textContent='저장 중...';
   try {
-    await addExpense({tripId, date, category:S.spCat, detail, amountLocal:local, amountKRW:krw, payer:S.spPayer});
+    await addExpense({tripId, date, category:S.spCat, detail, amountLocal:local, amountKRW:krw});
     document.getElementById('sp-detail').value='';
     document.getElementById('sp-local').value='';
     document.getElementById('sp-krw-hint').textContent='';
@@ -1161,16 +1132,6 @@ window.addEventListener('offline',()=>document.getElementById('offline-bar').cla
 // Firebase Auth 상태
 onAuthStateChanged(auth, user=>{
   if (user) {
-    const match = AUTH_USERS.find(u=>u.email===user.email);
-    if (match) {
-      S.exPayer = match.defaultPayer;
-      S.spPayer = match.defaultPayer;
-      ['ex-payer-seg','sp-payer-seg'].forEach(segId=>{
-        document.querySelectorAll(`#${segId} .seg-btn`).forEach(b=>
-          b.classList.toggle('active', b.dataset.payer===match.defaultPayer)
-        );
-      });
-    }
     startApp();
   } else {
     document.getElementById('pin-overlay').classList.add('show');
