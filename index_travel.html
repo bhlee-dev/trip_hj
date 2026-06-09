@@ -536,8 +536,8 @@ const GAS_URL    = 'https://script.google.com/macros/s/AKfycbwYbfKYb9pONHkSlCZjW
 const GAS_SECRET = 'trip2024secretABC';  // setupSecret()으로 설정
 
 const AUTH_USERS = [
-  { email: 'hj@ledger.com' },
-  { email: 'jeong@ledger.com' }
+  { email: 'hj@ledger.com',    name: '희' },
+  { email: 'jeong@ledger.com', name: '정' }
 ];
 
 const CATS = ['식비','교통','숙박','관광','기타'];
@@ -556,11 +556,12 @@ const S = {
   trips:    [],
   exchanges:[],
   expenses: [],
-  exTripId: '',
-  spTripId: '',
-  spCat:    '식비',
-  detailId: null,
-  pending:  null,   // { type, id }
+  exTripId:        '',
+  spTripId:        '',
+  spCat:           '식비',
+  detailId:        null,
+  pending:         null,   // { type, id }
+  currentUserName: '',
 };
 
 // ─── 유틸 ───
@@ -1056,7 +1057,7 @@ document.getElementById('ex-save').addEventListener('click', async()=>{
   if(krw<=0){err.textContent='원화 금액을 입력해주세요';err.classList.add('show');return;}
   const btn=document.getElementById('ex-save'); btn.disabled=true; btn.textContent='저장 중...';
   try {
-    await addExchange({tripId, date, amountLocal:local, amountKRW:krw});
+    await addExchange({tripId, date, amountLocal:local, amountKRW:krw, payer:S.currentUserName});
     document.getElementById('ex-local').value='';
     document.getElementById('ex-krw').value='';
     document.getElementById('ex-rate-hint').textContent='';
@@ -1086,7 +1087,7 @@ document.getElementById('sp-save').addEventListener('click', async()=>{
   const krw=st.avgRate>0 ? Math.round(local*st.avgRate) : 0;
   const btn=document.getElementById('sp-save'); btn.disabled=true; btn.textContent='저장 중...';
   try {
-    await addExpense({tripId, date, category:S.spCat, detail, amountLocal:local, amountKRW:krw});
+    await addExpense({tripId, date, category:S.spCat, detail, amountLocal:local, amountKRW:krw, payer:S.currentUserName});
     document.getElementById('sp-detail').value='';
     document.getElementById('sp-local').value='';
     document.getElementById('sp-krw-hint').textContent='';
@@ -1132,6 +1133,8 @@ window.addEventListener('offline',()=>document.getElementById('offline-bar').cla
 // Firebase Auth 상태
 onAuthStateChanged(auth, user=>{
   if (user) {
+    const matched = AUTH_USERS.find(u => u.email === user.email);
+    S.currentUserName = matched?.name || '';
     startApp();
   } else {
     document.getElementById('pin-overlay').classList.add('show');
