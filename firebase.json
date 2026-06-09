@@ -1,0 +1,26 @@
+{
+  "hosting": {
+    "public": ".",
+    "ignore": [
+      "firebase.json",
+      ".firebaserc",
+      ".clasp.json",
+      "firestore.rules",
+      "appsscript.json",
+      "Code.gs",
+      ".git/**",
+      "node_modules/**"
+    ],
+    "rewrites": [
+      { "source": "/", "destination": "/index_travel.html" }
+    ],
+    "headers": [
+      {
+        "source": "**",
+        "headers": [
+          { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+        ]
+      }
+    ]
+  }
+}
