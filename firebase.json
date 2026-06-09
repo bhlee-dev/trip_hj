@@ -12,13 +12,19 @@
       "node_modules/**"
     ],
     "rewrites": [
-      { "source": "/", "destination": "/index_travel.html" }
+      {
+        "source": "/",
+        "destination": "/index_travel.html"
+      }
     ],
     "headers": [
       {
         "source": "**",
         "headers": [
-          { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, no-store, must-revalidate"
+          }
         ]
       }
     ]
