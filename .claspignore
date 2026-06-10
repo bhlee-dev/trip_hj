@@ -1,0 +1,12 @@
+.claude/**
+node_modules/**
+*.html
+*.md
+.git/**
+.github/**
+sw.js
+manifest.json
+icons/**
+firebase.json
+firestore.rules
+.firebaserc

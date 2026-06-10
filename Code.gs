@@ -1,9 +1,12 @@
 // ====================================================
 // 여행경비 (trip_hj) — Google Apps Script 백엔드
 // 역할: Firestore 데이터를 Google Sheets RAW_TRAVEL 시트에 텍스트 백업
+// 인증: Firebase ID 토큰 검증 (identitytoolkit accounts:lookup)
 // ====================================================
 
 const RAW_TRAVEL = 'RAW_TRAVEL';
+const FIREBASE_API_KEY = 'AIzaSyD_yoo89cFXvXVY0PbpXk6_0I6LRRj5L20'; // trip-hj 웹 API 키 (공개값)
+const ALLOWED_EMAILS = ['hj@ledger.com', 'jeong@ledger.com'];
 
 // ────────────────────────────────────────────────
 // 최초 1회 설정 — GAS 편집기에서 직접 실행
@@ -15,10 +18,11 @@ function setupSpreadsheetId() {
   Logger.log('SPREADSHEET_ID 저장 완료');
 }
 
-function setupSecret() {
-  // index_travel.html의 GAS_SECRET과 동일한 값으로 교체 후 실행
-  PropertiesService.getScriptProperties().setProperty('GAS_SECRET', 'YOUR_GAS_SECRET');
-  Logger.log('GAS_SECRET 저장 완료');
+// 새 OAuth 권한(외부 요청) 승인용 — GAS 편집기에서 1회 실행하고 권한 허용
+function authorizeOnce() {
+  const res = UrlFetchApp.fetch('https://www.google.com', { muteHttpExceptions: true });
+  Logger.log('외부 요청 권한 OK: ' + res.getResponseCode());
+  Logger.log('SPREADSHEET_ID: ' + (getSpreadsheetId() ? '설정됨' : '미설정'));
 }
 
 // ────────────────────────────────────────────────
@@ -29,8 +33,25 @@ function getSpreadsheetId() {
   return PropertiesService.getScriptProperties().getProperty('SPREADSHEET_ID') || '';
 }
 
-function getSecret() {
-  return PropertiesService.getScriptProperties().getProperty('GAS_SECRET') || '';
+function verifyFirebaseToken(idToken) {
+  if (!idToken || typeof idToken !== 'string') return false;
+  try {
+    const res = UrlFetchApp.fetch(
+      'https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=' + FIREBASE_API_KEY,
+      {
+        method: 'post',
+        contentType: 'application/json',
+        payload: JSON.stringify({ idToken: idToken }),
+        muteHttpExceptions: true
+      }
+    );
+    if (res.getResponseCode() !== 200) return false;
+    const data = JSON.parse(res.getContentText());
+    const email = data.users && data.users[0] && data.users[0].email;
+    return ALLOWED_EMAILS.indexOf(email) !== -1;
+  } catch (err) {
+    return false;
+  }
 }
 
 function getOrCreateSheet(name) {
@@ -63,7 +84,7 @@ function doPost(e) {
   try { payload = JSON.parse(e.postData.contents); }
   catch (err) { return jsonResponse({ success: false, error: '요청 파싱 실패' }); }
 
-  if (!payload.secret || payload.secret !== getSecret()) {
+  if (!verifyFirebaseToken(payload.token)) {
     return jsonResponse({ success: false, error: '인증 실패' });
   }
 
