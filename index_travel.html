@@ -829,6 +829,16 @@ function tripDuration(t) {
   const nights = Math.max(0, Math.round((e - s) / 86400000));
   return nights > 0 ? `${nights}박 ${nights+1}일` : '당일';
 }
+// createdAt(Firestore Timestamp | Date | ISO) → ms
+function tsMs(x) { if(!x) return 0; if(x.seconds) return x.seconds*1000; const d=new Date(x); return isNaN(d)?0:d.getTime(); }
+// 여행을 날짜(시작일, 없으면 종료일) 최신순으로. 동률이면 생성 최신순
+function sortedTrips() {
+  return S.trips.slice().sort((a,b)=>{
+    const ka=a.startDate||a.endDate||'', kb=b.startDate||b.endDate||'';
+    if (ka!==kb) return kb.localeCompare(ka);
+    return tsMs(b.createdAt)-tsMs(a.createdAt);
+  });
+}
 
 // 특정 구간(통화)의 환전/지출만
 function legExs(tripId, cur)  { const t=tripById(tripId); return tripExs(tripId).filter(e=>recCur(e,t)===cur); }
@@ -968,7 +978,7 @@ async function gasBackup(action, data) {
 // ─── 여행 선택 동기화 ───
 function syncTripSelects() {
   const opts = ['<option value="">— 여행을 선택해주세요 —</option>',
-    ...S.trips.map(t=>`<option value="${esc(t.id)}">${esc(t.title)} (${tripLegs(t).map(l=>esc(l.currency)).join('·')})</option>`)
+    ...sortedTrips().map(t=>`<option value="${esc(t.id)}">${esc(t.title)} (${tripLegs(t).map(l=>esc(l.currency)).join('·')})</option>`)
   ].join('');
   ['ex-trip-sel','sp-trip-sel'].forEach(id=>{
     const el=document.getElementById(id);
@@ -1064,7 +1074,7 @@ function renderHome() {
   const empty = document.getElementById('home-empty');
   if (S.trips.length===0) { list.innerHTML=''; empty.style.display='flex'; return; }
   empty.style.display='none';
-  list.innerHTML = S.trips.map(t => {
+  list.innerHTML = sortedTrips().map(t => {
     const st   = tripStats(t.id);
     const curBadge = tripCurBadge(t);
     const dr  = [t.startDate,t.endDate].filter(Boolean).map(fmtDateShort).join(' ~ ')||'기간 미정';
@@ -1390,7 +1400,7 @@ function renderManage() {
     el.innerHTML=`<div class="empty-sm"><span class="empty-icon">🗺️</span><span class="empty-sub">아직 여행이 없습니다</span></div>`;
     return;
   }
-  el.innerHTML = S.trips.map(t=>{
+  el.innerHTML = sortedTrips().map(t=>{
     const dr=[t.startDate,t.endDate].filter(Boolean).map(fmtDateShort).join(' ~ ')||'기간 미정';
     const curBadge=tripCurBadge(t);
     return `<div class="mg-trip-row">
