@@ -342,7 +342,7 @@ input[type="date"].form-input{font-size:var(--text-body);-webkit-appearance:none
   <header id="app-header">
     <div id="header-title-wrap">
       <span id="header-title">여행경비</span>
-      <span id="header-version">v3.2</span>
+      <span id="header-version">v3.3</span>
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-muted)"><polyline points="6 9 12 15 18 9"/></svg>
     </div>
     <button id="header-manage" type="button" aria-label="관리">
@@ -1152,8 +1152,14 @@ function renderSyncResult(diff) {
   let dbg = '';
   if (toUpdate.length && toUpdate[0].gs) {
     const u = toUpdate[0], fs = ['date','type','tripTitle','category','detail','amountLocal','amountKRW','payer','currency'];
+    const cpInfo = (a,b)=>{
+      const A=Array.from(String(a==null?'':a)), B=Array.from(String(b==null?'':b));
+      let i=0; while(i<A.length&&i<B.length&&A[i]===B[i]) i++;
+      const hex=ch=>ch?('U+'+ch.codePointAt(0).toString(16).toUpperCase()):'∅';
+      return ` [len ${A.length}/${B.length} @${i} ${hex(A[i])}↔${hex(B[i])}]`;
+    };
     const rows = fs.filter(f=>normS(u.data[f])!==normS(u.gs[f]))
-      .map(f=>`${f}: 앱"${u.data[f]}" ↔ 시트"${u.gs[f]}"`);
+      .map(f=>`${f}: 앱"${u.data[f]}" ↔ 시트"${u.gs[f]}"`+cpInfo(u.data[f],u.gs[f]));
     if (rows.length) dbg = `<div class="sync-diff-section"><div class="sync-diff-label">진단 (첫 수정건 차이)</div>`
       + rows.map(r=>`<div class="sync-diff-item" style="white-space:normal;color:var(--text-sub)">${esc(r)}</div>`).join('') + `</div>`;
   }
