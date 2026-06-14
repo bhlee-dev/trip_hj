@@ -1947,6 +1947,8 @@ function showTab(tab) {
   const el=document.getElementById('tab-'+tab);
   if(el) el.classList.add('active');
   if(tab==='manage') renderManage();
+  // 홈 탭 진입 시 카드 사진 재추첨 (대부분 캐시라 데이터 거의 안 씀)
+  if(tab==='home') applyCardBackgrounds(document.getElementById('home-list'));
 }
 
 // ─── Auth ───
