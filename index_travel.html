@@ -1085,16 +1085,18 @@ async function getAllSheetsTravel() {
 // 비교도 같은 정밀도로 맞춰야 함(안 그러면 소수점 차이로 영구 "수정 필요" 발생)
 function sameNumTrunc(a, b) { return Math.trunc(Number(a)||0) === Math.trunc(Number(b)||0); }
 function sameNumTol(a, b, tol) { return Math.abs((Number(a)||0) - (Number(b)||0)) <= tol; }
+// 한글 NFC 정규화 + trim: 시트(Google이 NFC로 자동 변환)와 Firestore(iOS NFD 가능) 비교용
+const normS = s => String(s==null?'':s).normalize('NFC').trim();
 function itemsDiffer(a, b) {
-  return String(a.date).slice(0,10) !== String(b.date).slice(0,10)
-      || String(a.type)      !== String(b.type)
-      || String(a.tripTitle) !== String(b.tripTitle)
-      || String(a.category)  !== String(b.category)
-      || String(a.detail)    !== String(b.detail)
+  return normS(a.date).slice(0,10) !== normS(b.date).slice(0,10)
+      || normS(a.type)      !== normS(b.type)
+      || normS(a.tripTitle) !== normS(b.tripTitle)
+      || normS(a.category)  !== normS(b.category)
+      || normS(a.detail)    !== normS(b.detail)
       || !sameNumTol(a.amountLocal, b.amountLocal, 0.005)
       || !sameNumTrunc(a.amountKRW, b.amountKRW)
-      || String(a.payer)     !== String(b.payer)
-      || String(a.currency)  !== String(b.currency);
+      || normS(a.payer)     !== normS(b.payer)
+      || normS(a.currency)  !== normS(b.currency);
 }
 
 function computeSyncDiff(fbList, gsList) {
@@ -1150,7 +1152,7 @@ function renderSyncResult(diff) {
   let dbg = '';
   if (toUpdate.length && toUpdate[0].gs) {
     const u = toUpdate[0], fs = ['date','type','tripTitle','category','detail','amountLocal','amountKRW','payer','currency'];
-    const rows = fs.filter(f=>String(u.data[f])!==String(u.gs[f]))
+    const rows = fs.filter(f=>normS(u.data[f])!==normS(u.gs[f]))
       .map(f=>`${f}: 앱"${u.data[f]}" ↔ 시트"${u.gs[f]}"`);
     if (rows.length) dbg = `<div class="sync-diff-section"><div class="sync-diff-label">진단 (첫 수정건 차이)</div>`
       + rows.map(r=>`<div class="sync-diff-item" style="white-space:normal;color:var(--text-sub)">${esc(r)}</div>`).join('') + `</div>`;
