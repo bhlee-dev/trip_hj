@@ -1,6 +1,6 @@
 {
-  "name": "여행경비",
-  "short_name": "여행경비",
+  "name": "여행",
+  "short_name": "여행",
   "description": "부부 여행경비 관리",
   "start_url": "index_travel.html",
   "scope": "./",
