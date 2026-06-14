@@ -73,7 +73,7 @@ balance_hj와 동일 패턴이며 **가계부 내보내기 시 balance 재인증
 - **항상 다크모드**, CSS 변수 기반 타이포그래피 (balance 디자인 시스템 계승)
 - 입력·수정·삭제는 모두 **바텀시트** (openSheet/closeSheet + 스와이프 닫기 initSheetGestures)
 - stat 숫자는 카운트업(animateValue)
-- FAB 없음 — 하단 탭으로만 이동
+- 하단 탭 4개: 홈 · 환전 · **지출(중앙 강조 원형 FAB, `.tab-btn-primary`)** · 관리. 사용 빈도(지출 하루 여러 번 > 환전 ≤1회/일 > 홈 개요 > 관리 여행당 1회)에 맞춰 지출을 강조색 원형 버튼으로 띄움(`.tab-primary-fab`, margin-top 음수로 바 위로 돌출). 관리=여행 세트 사전 생성용.
 
 ---
 
