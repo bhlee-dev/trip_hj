@@ -203,10 +203,10 @@ input[type="date"].form-input{font-size:var(--text-body);-webkit-appearance:none
 .trip-stat-label{font-size:var(--text-micro);color:var(--text-muted)}
 .trip-stat-val{font-size:var(--text-caption);font-weight:var(--fw-semibold);color:var(--text);letter-spacing:var(--ls-snug)}
 .trip-card-chevron{flex-shrink:0;color:var(--text-muted);margin-top:auto}
-/* ── TRIP CARD PHOTO BACKGROUND */
-.trip-card{position:relative;overflow:hidden;background-size:cover;background-position:center}
+/* ── TRIP CARD PHOTO BACKGROUND (배경은 카드 안쪽 레이어로 — iOS 둥근모서리 누수 방지) */
+.trip-card{position:relative;overflow:hidden;isolation:isolate}
 .trip-card.has-photo{border-color:transparent;box-shadow:0 2px 14px rgba(0,0,0,.5)}
-.trip-card.has-photo::before{content:"";position:absolute;inset:0;background:linear-gradient(to bottom,rgba(8,10,14,.74) 0%,rgba(8,10,14,.42) 40%,rgba(8,10,14,.80) 100%);z-index:0}
+.trip-card.has-photo::before{content:"";position:absolute;inset:0;z-index:0;border-radius:inherit;background:linear-gradient(to bottom,rgba(8,10,14,.74) 0%,rgba(8,10,14,.42) 40%,rgba(8,10,14,.80) 100%),var(--card-bg) center/cover no-repeat}
 .trip-card.has-photo>*{position:relative;z-index:1}
 .trip-card.has-photo .trip-card-title,.trip-card.has-photo .trip-stat-val{color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.7)}
 .trip-card.has-photo .trip-card-dates,.trip-card.has-photo .trip-stat-label{color:rgba(255,255,255,.86);text-shadow:0 1px 2px rgba(0,0,0,.6)}
@@ -1158,7 +1158,7 @@ function applyCardBackgrounds(listEl) {
     if (!card) return;
     fetchPhoto(pid).then(url=>{
       if (url && card.isConnected) {
-        card.style.backgroundImage = `url("${url}")`;
+        card.style.setProperty('--card-bg', `url("${url}")`);
         card.classList.add('has-photo');
       }
     });
