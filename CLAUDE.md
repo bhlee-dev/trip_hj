@@ -73,7 +73,8 @@ balance_hj와 동일 패턴이며 **가계부 내보내기 시 balance 재인증
 - **항상 다크모드**, CSS 변수 기반 타이포그래피 (balance 디자인 시스템 계승)
 - 입력·수정·삭제는 모두 **바텀시트** (openSheet/closeSheet + 스와이프 닫기 initSheetGestures)
 - stat 숫자는 카운트업(animateValue)
-- 하단 탭 4개: 홈 · 환전 · **지출(중앙 강조 원형 FAB, `.tab-btn-primary`)** · 관리. 사용 빈도(지출 하루 여러 번 > 환전 ≤1회/일 > 홈 개요 > 관리 여행당 1회)에 맞춰 지출을 강조색 원형 버튼으로 띄움(`.tab-primary-fab`, margin-top 음수로 바 위로 돌출). 관리=여행 세트 사전 생성용.
+- 하단 탭 3개: 홈 · 환전 · **기록**(평평한 탭, `data-tab="expense"`). 사용 빈도(지출 기록 하루 여러 번 > 환전 ≤1회/일 > 홈 개요)에 맞춘 구성. **관리는 하단에서 제외** — 우상단 헤더 톱니바퀴(`#header-manage`)→`showTab('manage')`로 진입(여행당 1회 사전 생성용이라 상시 노출 불필요). v3.2에서 강조 FAB(`.tab-btn-primary`) 원복: "디자인적으로 너무 튄다" 피드백.
+- **헤더 버전 라벨은 제목 바로 오른쪽**(`#header-title-wrap` 내부, 제목→`#header-version`→앱스위처 chevron 순). balance_hj(`가계부 v9`)/snowball_hj(`우상향 v1`)와 동일 위치로 통일 — "동일 앱처럼" 느껴지게.
 
 ---
 

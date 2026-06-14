@@ -88,6 +88,8 @@ body{display:flex;flex-direction:column;align-items:stretch}
 #header-title-wrap:active{opacity:.55}
 #header-title{font-size:var(--text-h2);font-weight:var(--fw-semibold);color:var(--text);letter-spacing:var(--ls-normal)}
 #header-version{font-size:var(--text-micro);font-weight:var(--fw-medium);color:var(--text-muted);letter-spacing:.02em}
+#header-manage{background:none;border:none;color:var(--text-muted);cursor:pointer;padding:6px;margin:-6px;display:flex;align-items:center;-webkit-tap-highlight-color:transparent;transition:opacity .15s,color .15s}
+#header-manage:active{opacity:.55}
 
 /* ── APP SWITCHER */
 #app-switcher-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:300;display:none;align-items:flex-end;justify-content:center}
@@ -109,11 +111,6 @@ body{display:flex;flex-direction:column;align-items:stretch}
 #bottom-tabs{height:calc(64px + env(safe-area-inset-bottom,0px));background:rgba(17,17,18,0.88);backdrop-filter:blur(24px) saturate(160%);-webkit-backdrop-filter:blur(24px) saturate(160%);border-top:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-around;padding-top:10px;padding-bottom:env(safe-area-inset-bottom,0px);position:sticky;bottom:0;flex-shrink:0;z-index:100}
 .tab-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;color:var(--text-muted);font-size:var(--text-micro);font-family:inherit;font-weight:var(--fw-medium);cursor:pointer;padding:0 4px;-webkit-tap-highlight-color:transparent;transition:color .15s;letter-spacing:-.01em}
 .tab-btn.active{color:var(--text)}
-.tab-btn-primary{justify-content:flex-start;gap:0}
-.tab-primary-fab{display:flex;align-items:center;justify-content:center;width:50px;height:50px;border-radius:50%;background:var(--blue);color:#fff;margin-top:-24px;box-shadow:0 8px 20px rgba(10,132,255,.5);border:4px solid var(--bg);transition:transform .15s ease, box-shadow .15s ease}
-.tab-btn-primary:active .tab-primary-fab{transform:scale(.9);box-shadow:0 4px 12px rgba(10,132,255,.45)}
-.tab-primary-lbl{margin-top:5px;color:var(--blue);font-weight:var(--fw-semibold);font-size:var(--text-micro);letter-spacing:-.01em}
-.tab-btn-primary.active .tab-primary-lbl{color:var(--blue)}
 .tab-icon-svg{width:22px;height:22px}
 
 /* ── FORMS */
@@ -328,9 +325,12 @@ input[type="date"].form-input{font-size:var(--text-body);-webkit-appearance:none
   <header id="app-header">
     <div id="header-title-wrap">
       <span id="header-title">여행경비</span>
+      <span id="header-version">v3.2</span>
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-muted)"><polyline points="6 9 12 15 18 9"/></svg>
     </div>
-    <span id="header-version">v3.1</span>
+    <button id="header-manage" type="button" aria-label="관리">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="22" height="22"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+    </button>
   </header>
 
   <!-- ────── MAIN ────── -->
@@ -485,15 +485,9 @@ input[type="date"].form-input{font-size:var(--text-body);-webkit-appearance:none
       <svg class="tab-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
       환전
     </button>
-    <button class="tab-btn tab-btn-primary" data-tab="expense" type="button">
-      <span class="tab-primary-fab">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" width="26" height="26"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      </span>
-      <span class="tab-primary-lbl">지출 기록</span>
-    </button>
-    <button class="tab-btn" data-tab="manage" type="button">
-      <svg class="tab-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
-      관리
+    <button class="tab-btn" data-tab="expense" type="button">
+      <svg class="tab-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/></svg>
+      기록
     </button>
   </nav>
 
@@ -1633,6 +1627,9 @@ document.getElementById('pin-input').addEventListener('keydown', e=>{ if(e.key==
 
 // 탭 버튼
 document.querySelectorAll('.tab-btn').forEach(b=>b.addEventListener('click',()=>showTab(b.dataset.tab)));
+
+// 관리 (헤더 톱니바퀴)
+document.getElementById('header-manage').addEventListener('click',()=>showTab('manage'));
 
 // 헤더 (앱 스위처)
 document.getElementById('header-title-wrap').addEventListener('click',()=>openSheet('app-switcher-overlay'));
