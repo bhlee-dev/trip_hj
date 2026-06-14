@@ -810,6 +810,10 @@ function recCur(rec, t) {
   return rec?.currency || t?.currency || (tripLegs(t)[0]?.currency) || '';
 }
 const isKRWcur = c => c === 'KRW';
+// 원화(한국 사전) 결제 기록: KRW 구간이거나, 현지금액 0 + 원화값 있음(예: 출국 전 항공·숙소 원화 결제)
+function isKrwPaid(rec, t) {
+  return isKRWcur(recCur(rec, t)) || (Number(rec?.amountLocal)===0 && Number(rec?.amountKRW)>0);
+}
 
 // 나라(=해외 통화 구간)만. KRW 구간은 '한국 사전 결제'이지 방문국이 아님
 function tripCountries(t) { return tripLegs(t).filter(l => !isKRWcur(l.currency)); }
@@ -844,24 +848,27 @@ function tripStats(tripId) {
   const legs = tripLegs(t);
   const exs  = tripExs(tripId);
   const exps = tripExps(tripId);
-  // 구간별 통계
-  const perLeg = legs.map(leg => {
+  // 해외 통화 구간만. 원화 결제(KRW 구간 or 현지금액 0)는 구간 합계에서 제외 → 구간은 순수 현지 지출만
+  const perLeg = legs.filter(l=>!isKRWcur(l.currency)).map(leg => {
     const cur = leg.currency;
-    const le  = exs.filter(e=>recCur(e,t)===cur);
-    const lp  = exps.filter(e=>recCur(e,t)===cur);
+    const le  = exs.filter(e=>recCur(e,t)===cur && !isKrwPaid(e,t));
+    const lp  = exps.filter(e=>recCur(e,t)===cur && !isKrwPaid(e,t));
     const exLocal = le.reduce((s,e)=>s+(e.amountLocal||0),0);
     const exKRW   = le.reduce((s,e)=>s+(e.amountKRW||0),0);
     const spLocal = lp.reduce((s,e)=>s+(e.amountLocal||0),0);
     const spKRW   = lp.reduce((s,e)=>s+(e.amountKRW||0),0);
-    const avgRate = isKRWcur(cur) ? 1 : (exLocal>0 ? exKRW/exLocal : 0);
-    return { name:leg.name, currency:cur, isKRW:isKRWcur(cur), exLocal, exKRW, spLocal, spKRW, avgRate, exCount:le.length };
+    const avgRate = exLocal>0 ? exKRW/exLocal : 0;
+    return { name:leg.name, currency:cur, isKRW:false, exLocal, exKRW, spLocal, spKRW, avgRate, exCount:le.length };
   });
+  // 원화(한국 사전) 결제 통합 집계 — KRW 구간 + 현지금액 0 원화결제 한데 모음
+  const krwExps = exps.filter(e=>isKrwPaid(e,t));
+  const krwKRW  = krwExps.reduce((s,e)=>s+(e.amountKRW||0),0);
   // 여행 전체 KRW 합계 (공통 분모)
   const exKRW = exs.reduce((s,e)=>s+(e.amountKRW||0),0);
   const spKRW = exps.reduce((s,e)=>s+(e.amountKRW||0),0);
   const byCat = Object.fromEntries(CATS.map(c=>[c,0]));
   exps.forEach(e=>{ const c=e.category||'기타'; byCat[c]=(byCat[c]||0)+(e.amountKRW||0); });
-  return { perLeg, exKRW, spKRW, byCat };
+  return { perLeg, krwKRW, krwCount:krwExps.length, exKRW, spKRW, byCat };
 }
 
 // ─── Firestore ───
@@ -1100,26 +1107,18 @@ function closeDetail() {
 
 function renderDetailBody(trip) {
   const st   = tripStats(trip.id);
-  const legs = st.perLeg;
-  const multi = legs.length>1;
-  const nCountries = legs.filter(l=>!l.isKRW).length;
-  const hasKRWleg = legs.some(l=>l.isKRW);
+  const legs = st.perLeg;            // 해외 통화 구간만
+  const hasKrw = st.krwKRW>0;        // 한국 사전 결제 존재 여부
+  const nCountries = legs.length;
   const dur = tripDuration(trip);
+  const nSecs = legs.length + (hasKrw?1:0);
+  const multi = nSecs>1;             // 섹션 머리글 표시 여부
   const exps = tripExps(trip.id).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
 
-  // 구간(나라)별 섹션 — KRW는 '한국 사전 결제(항공·숙소)', 잔액 표시 없음
-  const legSecs = legs.map(lg=>{
-    let cards, headName, headCur;
-    if (lg.isKRW) {
-      headName = '한국 사전 결제'; headCur = '항공·숙소 등';
-      cards = `<div class="stat-card full">
-        <div class="sc-label">한국 사전 결제 (KRW)</div>
-        <div class="sc-value">${fmtKRW(lg.spKRW)}</div>
-        <div class="sc-sub">출국 전 항공·숙소 등 원화 결제</div>
-      </div>`;
-    } else {
-      headName = lg.name; headCur = lg.currency;
-      cards = `
+  // 해외 구간별 섹션 (순수 현지 지출 + 환전 + 가중평균환율)
+  let legSecs = legs.map(lg=>{
+    const head = multi ? `<div class="leg-sec-head"><span class="leg-sec-name">${esc(lg.name)}</span><span class="leg-sec-cur">${esc(lg.currency)}</span></div>` : '';
+    const cards = `
       <div class="stat-card">
         <div class="sc-label">현지 지출</div>
         <div class="sc-value">${fmtLocal(lg.spLocal,lg.currency)}</div>
@@ -1135,10 +1134,17 @@ function renderDetailBody(trip) {
         <div class="sc-value">${lg.avgRate.toLocaleString('ko-KR',{maximumFractionDigits:2})}<span style="font-size:var(--text-caption);font-weight:var(--fw-regular);color:var(--text-sub)"> 원/${esc(lg.currency)}</span></div>
         <div class="sc-sub">${lg.exCount}건 환전 기준</div>
       </div>`:''}`;
-    }
-    const head = multi ? `<div class="leg-sec-head"><span class="leg-sec-name">${esc(headName)}</span><span class="leg-sec-cur">${esc(headCur)}</span></div>` : '';
     return `${head}<div class="stat-cards">${cards}</div>`;
   }).join('');
+  // 한국 사전 결제(원화) 통합 섹션
+  if (hasKrw) {
+    const head = multi ? `<div class="leg-sec-head"><span class="leg-sec-name">한국 사전 결제</span><span class="leg-sec-cur">원화</span></div>` : '';
+    legSecs += `${head}<div class="stat-cards"><div class="stat-card full">
+      <div class="sc-label">한국 사전 결제 (KRW)</div>
+      <div class="sc-value">${fmtKRW(st.krwKRW)}</div>
+      <div class="sc-sub">출국 전 항공·숙소 등 원화 결제 ${st.krwCount}건</div>
+    </div></div>`;
+  }
 
   // 카테고리별 (KRW 통합)
   const catBars = CATS.map(cat=>{
@@ -1157,12 +1163,12 @@ function renderDetailBody(trip) {
   const tl = Object.keys(byDate).sort((a,b)=>b.localeCompare(a)).map(date=>{
     const rows = byDate[date].map(e=>{
       const cls = `cpill cpill-${esc(e.category||'기타')}`;
-      const c = recCur(e, trip), isk = isKRWcur(c);
+      const c = recCur(e, trip), isk = isKrwPaid(e, trip);
       return `<div class="tl-item" data-edit-sp="${esc(e.id)}" role="button" tabindex="0">
         <div class="tl-dot" style="background:${CAT_COLOR[e.category]||'rgba(245,245,247,0.3)'}"></div>
         <div class="tl-info">
           <div class="tl-name">${esc(e.detail||'(내역 없음)')}</div>
-          <div class="tl-sub"><span class="${esc(cls)}">${esc(e.category||'기타')}</span>${isk?'<span class="leg-sec-cur">한국 사전결제</span>':(multi?`<span class="leg-sec-cur">${esc(c)}</span>`:'')}</div>
+          <div class="tl-sub"><span class="${esc(cls)}">${esc(e.category||'기타')}</span>${isk?'<span class="leg-sec-cur">원화 결제</span>':(multi?`<span class="leg-sec-cur">${esc(c)}</span>`:'')}</div>
         </div>
         <div class="tl-amt">
           <div class="tl-amt-local">${isk?fmtKRW(e.amountKRW):fmtLocal(e.amountLocal,c)}</div>
@@ -1179,7 +1185,7 @@ function renderDetailBody(trip) {
       <div class="stat-card blue">
         <div class="sc-label">총 지출 (KRW)</div>
         <div class="sc-value" id="sc-sp">${fmtKRW(st.spKRW)}</div>
-        <div class="sc-sub">${[dur, nCountries>1?nCountries+'개국':'', hasKRWleg?'한국 사전결제 포함':''].filter(Boolean).join(' · ')||'원화 환산'}</div>
+        <div class="sc-sub">${[dur, nCountries>1?nCountries+'개국':'', hasKrw?'한국 사전결제 포함':''].filter(Boolean).join(' · ')||'원화 환산'}</div>
       </div>
       <div class="stat-card">
         <div class="sc-label">총 환전 (KRW)</div>
@@ -1304,7 +1310,7 @@ function renderExList(tripId) {
 function renderSpList(tripId) {
   const el  = document.getElementById('sp-list');
   const cur = S.spCur||'';
-  const krw = isKRWcur(cur);
+  const t   = tripById(tripId);
   const exps = (tripId&&cur) ? legExps(tripId, cur).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')) : [];
   if (!tripId||!cur||exps.length===0) {
     el.innerHTML=`<div class="empty-sm"><span class="empty-icon">🧾</span><span class="empty-sub">${tripId?'지출 내역이 없습니다':'여행을 선택하면 지출 내역이 표시됩니다'}</span></div>`;
@@ -1312,15 +1318,16 @@ function renderSpList(tripId) {
   }
   el.innerHTML = `<div class="list-wrap">${exps.map(ex=>{
     const cls = `cpill cpill-${esc(ex.category||'기타')}`;
+    const ik = isKrwPaid(ex, t);
     return `<div class="list-item">
       <div class="list-item-body" data-edit-sp="${esc(ex.id)}">
         <div class="list-item-date">${esc(fmtDateFull(ex.date))}</div>
         <div class="list-item-title">${esc(ex.detail||'(내역 없음)')}</div>
-        <div class="list-item-meta"><span class="${esc(cls)}">${esc(ex.category||'기타')}</span></div>
+        <div class="list-item-meta"><span class="${esc(cls)}">${esc(ex.category||'기타')}</span>${ik&&!isKRWcur(cur)?'<span class="leg-sec-cur" style="margin-left:6px">원화 결제</span>':''}</div>
       </div>
       <div class="list-item-right">
-        <div class="list-item-local">${krw ? fmtKRW(ex.amountKRW) : fmtLocal(ex.amountLocal,cur)}</div>
-        ${krw ? '' : `<div class="list-item-krw">${fmtKRW(ex.amountKRW)}</div>`}
+        <div class="list-item-local">${ik ? fmtKRW(ex.amountKRW) : fmtLocal(ex.amountLocal,cur)}</div>
+        ${ik ? '' : `<div class="list-item-krw">${fmtKRW(ex.amountKRW)}</div>`}
       </div>
       <button class="icon-btn" data-del-sp="${esc(ex.id)}" type="button" aria-label="삭제">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
@@ -1427,11 +1434,11 @@ function openEdit(kind, id) {
   } else if (kind==='expense') {
     const ex=S.expenses.find(e=>e.id===id); if(!ex) return;
     const cur=recCur(ex, tripById(ex.tripId))||'—';
-    const isk=isKRWcur(cur);
+    const isk=isKrwPaid(ex, tripById(ex.tripId));
     document.getElementById('edit-title').textContent='지출 내역 수정';
     show('ed-date-group',true); show('ed-cat-group',true); show('ed-detail-group',true);
     show('ed-local-group',true); show('ed-krw-group',false); show('ed-title-group',false); show('ed-dates-group',false); show('ed-legs-group',false);
-    document.getElementById('ed-local-lbl').textContent=isk?'금액 (원화 직접결제)':`금액 (${cur})`;
+    document.getElementById('ed-local-lbl').textContent=isk?'금액 (원화 결제)':`금액 (${cur})`;
     document.getElementById('ed-cur-sfx').textContent=isk?'원':cur;
     document.getElementById('ed-date').value=ex.date||'';
     document.getElementById('ed-detail').value=ex.detail||'';
@@ -1481,7 +1488,7 @@ async function submitEdit() {
       const t=tripById(ex?.tripId||'');
       const c=recCur(ex,t);
       let krw, amountLocal;
-      if(isKRWcur(c)){ krw=Math.round(local); amountLocal=krw; }
+      if(isKrwPaid(ex,t)){ krw=Math.round(local); amountLocal=isKRWcur(c)?krw:0; }
       else { const rate=legAvgRate(ex?.tripId||'', c); krw=rate>0?Math.round(local*rate):(ex?.amountKRW||0); amountLocal=local; }
       btn.disabled=true; btn.textContent='저장 중...';
       await updateExpense(id,{date, category:edCat, detail, amountLocal, amountKRW:krw});
