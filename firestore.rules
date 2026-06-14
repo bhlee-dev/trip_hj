@@ -17,5 +17,8 @@ service cloud.firestore {
     match /trip_expenses/{docId} {
       allow read, write: if isAllowed();
     }
+    match /trip_photos/{docId} {
+      allow read, write: if isAllowed();
+    }
   }
 }

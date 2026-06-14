@@ -203,6 +203,19 @@ input[type="date"].form-input{font-size:var(--text-body);-webkit-appearance:none
 .trip-stat-label{font-size:var(--text-micro);color:var(--text-muted)}
 .trip-stat-val{font-size:var(--text-caption);font-weight:var(--fw-semibold);color:var(--text);letter-spacing:var(--ls-snug)}
 .trip-card-chevron{flex-shrink:0;color:var(--text-muted);margin-top:auto}
+/* ── TRIP CARD PHOTO BACKGROUND */
+.trip-card{position:relative;overflow:hidden;background-size:cover;background-position:center}
+.trip-card.has-photo::before{content:"";position:absolute;inset:0;background:linear-gradient(to bottom,rgba(10,12,16,.62),rgba(10,12,16,.82));z-index:0}
+.trip-card.has-photo>*{position:relative;z-index:1}
+.trip-card.has-photo .trip-card-title,.trip-card.has-photo .trip-stat-val{color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.7)}
+.trip-card.has-photo .trip-card-dates,.trip-card.has-photo .trip-stat-label{color:rgba(255,255,255,.86);text-shadow:0 1px 2px rgba(0,0,0,.6)}
+.trip-card.has-photo .trip-card-currency{color:#fff;background:rgba(0,0,0,.4)}
+.trip-card.has-photo .trip-card-chevron{color:rgba(255,255,255,.8)}
+/* ── PHOTO GRID (edit sheet) */
+.photo-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px}
+.photo-thumb{position:relative;aspect-ratio:1;border-radius:10px;background:var(--surface-3) center/cover no-repeat;cursor:pointer;border:1px solid var(--border)}
+.photo-thumb::after{content:"✕";position:absolute;top:3px;right:5px;font-size:11px;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.8);opacity:.85}
+.photo-thumb-empty{grid-column:1/-1;padding:14px;text-align:center;font-size:var(--text-caption);color:var(--text-muted);background:var(--surface-2);border-radius:10px}
 
 /* ── EMPTY STATE */
 .empty-state{padding:64px 32px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:10px}
@@ -612,6 +625,13 @@ input[type="date"].form-input{font-size:var(--text-body);-webkit-appearance:none
           <button class="btn-add-leg" id="ed-add-leg" type="button">＋ 나라 추가</button>
           <div class="form-hint">기록이 있는 구간은 통화 변경·삭제가 잠깁니다.</div>
         </div>
+        <div class="form-group" id="ed-photos-group" style="display:none">
+          <label class="form-label">여행 사진 (카드 배경)</label>
+          <div id="ed-photo-grid" class="photo-grid"></div>
+          <input id="ed-photo-input" type="file" accept="image/*" multiple style="display:none">
+          <button class="btn-add-leg" id="ed-photo-add" type="button">＋ 사진 추가</button>
+          <div class="form-hint">배경용으로 저화질로 줄여 저장돼요. 사진을 누르면 삭제됩니다.</div>
+        </div>
         <div class="form-group">
           <div class="form-error" id="ed-err"></div>
           <button class="btn btn-primary" id="ed-save" type="button">저장하기</button>
@@ -701,8 +721,8 @@ input[type="date"].form-input{font-size:var(--text-body);-webkit-appearance:none
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import {
   initializeFirestore, persistentLocalCache, persistentSingleTabManager,
-  collection, doc, addDoc, getDocs, deleteDoc, updateDoc, writeBatch, getFirestore,
-  query, orderBy, serverTimestamp
+  collection, doc, addDoc, getDoc, getDocs, deleteDoc, updateDoc, writeBatch, getFirestore,
+  query, orderBy, serverTimestamp, arrayUnion, arrayRemove
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import {
   getAuth, signInWithEmailAndPassword,
@@ -772,6 +792,7 @@ const S = {
   edit:            null,   // { kind, id }
   exportTripId:    null,
   currentUserName: '',
+  photoCache:      {},   // photoId → dataUrl (메모리 캐시)
 };
 
 // ─── 유틸 ───
@@ -964,6 +985,7 @@ async function removeTrip(id) {
   batch.delete(doc(db,'trips',id));
   tripExs(id).forEach(e=>batch.delete(doc(db,'trip_exchanges',e.id)));
   tripExps(id).forEach(e=>batch.delete(doc(db,'trip_expenses',e.id)));
+  (tripById(id)?.photoIds||[]).forEach(pid=>batch.delete(doc(db,'trip_photos',pid)));
   await batch.commit();
   S.trips     = S.trips.filter(t=>t.id!==id);
   S.exchanges = S.exchanges.filter(e=>e.tripId!==id);
@@ -1026,6 +1048,119 @@ async function gasBackup(action, data) {
       body: JSON.stringify({action, token, data})
     }).catch(()=>{});
   } catch(e) { /* 백업 실패는 무시 (Firestore가 원본) */ }
+}
+
+// ─── 여행 사진 (카드 배경용) ───
+// 비용 0원: Firebase Storage 미사용. 배경용 저화질로 리사이즈해 base64로 Firestore에 저장.
+// 사진 본문은 trip_photos/{id}, 여행 문서엔 가벼운 photoIds 배열만. 사진은 GAS/시트 백업 대상 아님.
+const isValidPhotoDataUrl = s => typeof s==='string' && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=\s]+$/.test(s);
+
+// 이미지 파일 → 리사이즈/압축 dataURL
+function fileToCompressedDataUrl(file, maxDim=1280, quality=0.5) {
+  return new Promise((resolve, reject)=>{
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = ()=>{
+      URL.revokeObjectURL(url);
+      let w=img.naturalWidth, h=img.naturalHeight;
+      if (!w || !h) return reject(new Error('이미지 크기 인식 실패'));
+      if (w>=h && w>maxDim) { h=Math.round(h*maxDim/w); w=maxDim; }
+      else if (h>w && h>maxDim) { w=Math.round(w*maxDim/h); h=maxDim; }
+      const cv=document.createElement('canvas'); cv.width=w; cv.height=h;
+      cv.getContext('2d').drawImage(img,0,0,w,h);
+      resolve(cv.toDataURL('image/jpeg', quality));
+    };
+    img.onerror = ()=>{ URL.revokeObjectURL(url); reject(new Error('이미지 로드 실패')); };
+    img.src = url;
+  });
+}
+
+async function fetchPhoto(photoId) {
+  if (S.photoCache[photoId]) return S.photoCache[photoId];
+  try {
+    const snap = await getDoc(doc(db,'trip_photos',photoId));
+    if (!snap.exists()) return null;
+    const d = snap.data().dataUrl;
+    if (!isValidPhotoDataUrl(d)) return null;
+    S.photoCache[photoId] = d;
+    return d;
+  } catch(e) { return null; }
+}
+
+async function addTripPhoto(tripId, dataUrl) {
+  const ref = await addDoc(collection(db,'trip_photos'), { tripId, dataUrl, createdAt: serverTimestamp() });
+  await updateDoc(doc(db,'trips',tripId), { photoIds: arrayUnion(ref.id) });
+  const t = tripById(tripId); if (t) t.photoIds = [...(t.photoIds||[]), ref.id];
+  S.photoCache[ref.id] = dataUrl;
+  return ref.id;
+}
+
+async function deleteTripPhoto(tripId, photoId) {
+  await deleteDoc(doc(db,'trip_photos',photoId));
+  await updateDoc(doc(db,'trips',tripId), { photoIds: arrayRemove(photoId) });
+  const t = tripById(tripId); if (t) t.photoIds = (t.photoIds||[]).filter(p=>p!==photoId);
+  delete S.photoCache[photoId];
+}
+
+// 여행 사진들 일괄 업로드 (리사이즈 후 Firestore 문서 1MiB 한도 내로 저장)
+async function uploadTripPhotos(tripId, files) {
+  if (!files || !files.length) return;
+  const btn = document.getElementById('ed-photo-add');
+  btn.disabled = true;
+  let ok=0, failN=0;
+  for (let i=0;i<files.length;i++) {
+    const f = files[i];
+    btn.textContent = `업로드 중… (${i+1}/${files.length})`;
+    if (!f.type || !f.type.startsWith('image/')) { failN++; continue; }
+    try {
+      let dataUrl = await fileToCompressedDataUrl(f, 1280, 0.5);
+      if (dataUrl.length > 900000) dataUrl = await fileToCompressedDataUrl(f, 1024, 0.42);
+      if (dataUrl.length > 950000) { failN++; continue; }  // 문서 한도(1MiB) 초과 방지
+      await addTripPhoto(tripId, dataUrl);
+      ok++;
+    } catch(e) { console.error(e); failN++; }
+  }
+  btn.disabled = false; btn.textContent = '＋ 사진 추가';
+  renderEditPhotos(tripId);
+  renderHome();
+  toast(failN ? `사진 ${ok}장 추가, ${failN}장 실패` : `사진 ${ok}장을 추가했어요`);
+}
+
+function renderEditPhotos(tripId) {
+  const grid = document.getElementById('ed-photo-grid');
+  const t = tripById(tripId);
+  const ids = (t && t.photoIds) || [];
+  if (!ids.length) { grid.innerHTML = '<div class="photo-thumb-empty">아직 사진이 없어요. 추가해보세요.</div>'; return; }
+  grid.innerHTML = ids.map(pid=>`<div class="photo-thumb" data-pid="${esc(pid)}"></div>`).join('');
+  ids.forEach(pid=>{
+    fetchPhoto(pid).then(url=>{
+      if (!url) return;
+      const el = grid.querySelector(`.photo-thumb[data-pid="${pid}"]`);
+      if (el) el.style.backgroundImage = `url("${url}")`;
+    });
+  });
+  grid.querySelectorAll('.photo-thumb').forEach(el=>el.addEventListener('click',()=>{
+    S.pending = { type:'photo', id:el.dataset.pid, tripId };
+    document.getElementById('del-msg').textContent = '이 사진을 삭제할까요?';
+    openSheet('del-overlay');
+  }));
+}
+
+// 카드(홈)에 여행 사진을 랜덤 배경으로 적용 (카드당 1장만 지연 로딩)
+function applyCardBackgrounds(listEl) {
+  S.trips.forEach(t=>{
+    const ids = t.photoIds || [];
+    if (!ids.length) return;
+    const pid = ids[Math.floor(Math.random()*ids.length)];
+    const card = listEl.querySelector(`.trip-card[data-id="${t.id}"]`);
+    if (!card) return;
+    fetchPhoto(pid).then(url=>{
+      if (url && card.isConnected) {
+        card.style.backgroundImage = `url("${url}")`;
+        card.classList.add('has-photo');
+      }
+    });
+  });
 }
 
 // ─── 스마트 동기화 (Firestore ↔ Google Sheets) ───
@@ -1150,22 +1285,7 @@ function renderSyncResult(diff) {
     applyBtn.style.display = 'none';
     return;
   }
-  let dbg = '';
-  if (toUpdate.length && toUpdate[0].gs) {
-    const u = toUpdate[0], fs = ['date','type','tripTitle','category','detail','amountLocal','amountKRW','payer','currency'];
-    const cpInfo = (a,b)=>{
-      const A=Array.from(String(a==null?'':a)), B=Array.from(String(b==null?'':b));
-      let i=0; while(i<A.length&&i<B.length&&A[i]===B[i]) i++;
-      const hex=ch=>ch?('U+'+ch.codePointAt(0).toString(16).toUpperCase()):'∅';
-      return ` [len ${A.length}/${B.length} @${i} ${hex(A[i])}↔${hex(B[i])}]`;
-    };
-    const rows = fs.filter(f=>normS(u.data[f])!==normS(u.gs[f]))
-      .map(f=>`${f}: 앱"${u.data[f]}" ↔ 시트"${u.gs[f]}"`+cpInfo(u.data[f],u.gs[f]));
-    if (rows.length) dbg = `<div class="sync-diff-section"><div class="sync-diff-label">진단 (첫 수정건 차이)</div>`
-      + rows.map(r=>`<div class="sync-diff-item" style="white-space:normal;color:var(--text-sub)">${esc(r)}</div>`).join('') + `</div>`;
-  }
-  detail.innerHTML = dbg
-    + syncPreviewSection('추가', toAdd,    'sync-diff-add', syncItemLabel)
+  detail.innerHTML = syncPreviewSection('추가', toAdd,    'sync-diff-add', syncItemLabel)
     + syncPreviewSection('수정', toUpdate, 'sync-diff-upd', u=>syncItemLabel(u.data))
     + syncPreviewSection('삭제', toDelete, 'sync-diff-del', syncItemLabel);
   applyBtn.style.display = '';
@@ -1335,6 +1455,7 @@ function renderHome() {
     </button>`;
   }).join('');
   list.querySelectorAll('.trip-card').forEach(c=>c.addEventListener('click',()=>openDetail(c.dataset.id)));
+  applyCardBackgrounds(list);
 }
 
 // ─── 렌더: 상세 오버레이 ───
@@ -1673,7 +1794,7 @@ function openEdit(kind, id) {
     const cur=recCur(ex, tripById(ex.tripId))||'—';
     document.getElementById('edit-title').textContent='환전 내역 수정';
     show('ed-date-group',true); show('ed-cat-group',false); show('ed-detail-group',false);
-    show('ed-local-group',true); show('ed-krw-group',true); show('ed-title-group',false); show('ed-dates-group',false); show('ed-legs-group',false);
+    show('ed-local-group',true); show('ed-krw-group',true); show('ed-title-group',false); show('ed-dates-group',false); show('ed-legs-group',false); show('ed-photos-group',false);
     document.getElementById('ed-local-lbl').textContent=`충전 금액 (${cur})`;
     document.getElementById('ed-cur-sfx').textContent=cur;
     document.getElementById('ed-date').value=ex.date||'';
@@ -1685,7 +1806,7 @@ function openEdit(kind, id) {
     const isk=isKrwPaid(ex, tripById(ex.tripId));
     document.getElementById('edit-title').textContent='지출 내역 수정';
     show('ed-date-group',true); show('ed-cat-group',true); show('ed-detail-group',true);
-    show('ed-local-group',true); show('ed-krw-group',false); show('ed-title-group',false); show('ed-dates-group',false); show('ed-legs-group',false);
+    show('ed-local-group',true); show('ed-krw-group',false); show('ed-title-group',false); show('ed-dates-group',false); show('ed-legs-group',false); show('ed-photos-group',false);
     document.getElementById('ed-local-lbl').textContent=isk?'금액 (원화 결제)':`금액 (${cur})`;
     document.getElementById('ed-cur-sfx').textContent=isk?'원':cur;
     document.getElementById('ed-date').value=ex.date||'';
@@ -1696,7 +1817,8 @@ function openEdit(kind, id) {
     const t=tripById(id); if(!t) return;
     document.getElementById('edit-title').textContent='여행 정보 수정';
     show('ed-date-group',false); show('ed-cat-group',false); show('ed-detail-group',false);
-    show('ed-local-group',false); show('ed-krw-group',false); show('ed-title-group',true); show('ed-dates-group',true); show('ed-legs-group',true);
+    show('ed-local-group',false); show('ed-krw-group',false); show('ed-title-group',true); show('ed-dates-group',true); show('ed-legs-group',true); show('ed-photos-group',true);
+    renderEditPhotos(id);
     document.getElementById('ed-trip-title').value=t.title||'';
     document.getElementById('ed-start').value=t.startDate||'';
     document.getElementById('ed-end').value=t.endDate||'';
@@ -1784,10 +1906,15 @@ function closeDel() {
 async function confirmDel() {
   closeDel();
   if (!S.pending) return;
-  const {type, id} = S.pending;
+  const {type, id, tripId} = S.pending;
   S.pending = null;
   try {
-    if (type==='exchange') {
+    if (type==='photo') {
+      await deleteTripPhoto(tripId, id);
+      renderEditPhotos(tripId);
+      renderHome();
+      toast('사진을 삭제했습니다');
+    } else if (type==='exchange') {
       await removeExchange(id);
       renderExList(S.exTripId);
       renderHome();
@@ -1984,6 +2111,12 @@ document.getElementById('del-overlay').addEventListener('click',e=>{
 // 수정 시트
 document.getElementById('ed-save').addEventListener('click', submitEdit);
 document.getElementById('ed-add-leg').addEventListener('click', ()=>legEditorAdd('ed-legs'));
+document.getElementById('ed-photo-add').addEventListener('click', ()=>document.getElementById('ed-photo-input').click());
+document.getElementById('ed-photo-input').addEventListener('change', async e=>{
+  const files = Array.from(e.target.files||[]);
+  e.target.value = '';
+  if (files.length && S.edit && S.edit.kind==='trip') await uploadTripPhotos(S.edit.id, files);
+});
 document.querySelectorAll('#ed-cat-chips .chip').forEach(b=>b.addEventListener('click',()=>setEdCat(b.dataset.cat)));
 document.getElementById('edit-overlay').addEventListener('click',e=>{
   if(e.target===document.getElementById('edit-overlay')) closeSheet('edit-overlay');
