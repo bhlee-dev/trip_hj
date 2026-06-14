@@ -1085,8 +1085,9 @@ async function getAllSheetsTravel() {
 // 비교도 같은 정밀도로 맞춰야 함(안 그러면 소수점 차이로 영구 "수정 필요" 발생)
 function sameNumTrunc(a, b) { return Math.trunc(Number(a)||0) === Math.trunc(Number(b)||0); }
 function sameNumTol(a, b, tol) { return Math.abs((Number(a)||0) - (Number(b)||0)) <= tol; }
-// 한글 NFC 정규화 + trim: 시트(Google이 NFC로 자동 변환)와 Firestore(iOS NFD 가능) 비교용
-const normS = s => String(s==null?'':s).normalize('NFC').trim();
+// 비교 정규화: NFC(시트는 NFC, iOS는 NFD 가능) + trim + 맨앞 작은따옴표 제거
+// (Google Sheets는 셀 값 맨 앞 ' 를 텍스트 마커로 보고 저장 시 삭제 → 제목 '25년…이 시트엔 25년…으로 들어감)
+const normS = s => String(s==null?'':s).normalize('NFC').trim().replace(/^'+/, '');
 function itemsDiffer(a, b) {
   return normS(a.date).slice(0,10) !== normS(b.date).slice(0,10)
       || normS(a.type)      !== normS(b.type)
