@@ -137,6 +137,25 @@ input[type="date"].form-input{font-size:var(--text-body);-webkit-appearance:none
 .chip{height:34px;padding:0 13px;border-radius:var(--radius-pill);border:1px solid var(--border-mid);background:var(--surface-1);color:var(--text-sub);font-size:var(--text-caption);font-weight:var(--fw-medium);cursor:pointer;font-family:inherit;transition:background .15s,border-color .15s,color .15s;-webkit-tap-highlight-color:transparent;white-space:nowrap}
 .chip.active{background:#FFFFFF;color:#000;border-color:#FFFFFF}
 
+/* ── LEG EDITOR */
+.leg-row{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+.leg-row .leg-name{flex:1.2}
+.leg-row .leg-cur{flex:1.4}
+.leg-row .form-input{height:44px}
+.leg-del{flex-shrink:0;width:40px;height:44px;border:1px solid var(--border-mid);border-radius:var(--radius-md);background:var(--surface-1);color:var(--text-muted);cursor:pointer;display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent}
+.leg-del:active{color:var(--danger)}
+.btn-add-leg{width:100%;height:44px;border:1px dashed var(--border-mid);border-radius:var(--radius-md);background:transparent;color:var(--text-sub);font-size:var(--text-caption);font-weight:var(--fw-medium);font-family:inherit;cursor:pointer;margin:4px 0 6px;-webkit-tap-highlight-color:transparent;transition:border-color .15s,color .15s}
+.btn-add-leg:active{border-color:rgba(255,255,255,0.32);color:var(--text)}
+
+/* ── LEG CHIPS (탭 구간 선택) */
+.leg-chip-bar{padding:10px 16px 12px;background:var(--surface-1);border-bottom:1px solid var(--border-mid);display:none}
+.leg-chip-bar.show{display:block}
+
+/* ── DETAIL LEG SECTION */
+.leg-sec-head{display:flex;align-items:center;gap:8px;padding:18px 16px 4px}
+.leg-sec-name{font-size:var(--text-body);font-weight:var(--fw-semibold);color:var(--text);letter-spacing:var(--ls-snug)}
+.leg-sec-cur{font-size:var(--text-micro);font-weight:var(--fw-medium);color:var(--text-muted);background:var(--surface-3);padding:2px 8px;border-radius:var(--radius-pill)}
+
 /* ── BUTTONS */
 .btn{height:54px;border:none;border-radius:var(--radius-md);font-size:var(--text-body);font-weight:var(--fw-semibold);cursor:pointer;font-family:inherit;transition:opacity .2s;-webkit-tap-highlight-color:transparent;width:100%;display:flex;align-items:center;justify-content:center;gap:6px}
 .btn:disabled{opacity:.32;cursor:not-allowed}
@@ -302,7 +321,7 @@ input[type="date"].form-input{font-size:var(--text-body);-webkit-appearance:none
       <span id="header-title">여행경비</span>
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-muted)"><polyline points="6 9 12 15 18 9"/></svg>
     </div>
-    <span id="header-version">v2.0</span>
+    <span id="header-version">v3.0</span>
   </header>
 
   <!-- ────── MAIN ────── -->
@@ -330,6 +349,10 @@ input[type="date"].form-input{font-size:var(--text-body);-webkit-appearance:none
         <select id="ex-trip-sel" class="form-input">
           <option value="">— 여행을 선택해주세요 —</option>
         </select>
+      </div>
+      <div class="leg-chip-bar" id="ex-leg-bar">
+        <label class="form-label" style="margin-bottom:6px">나라 / 통화</label>
+        <div class="chip-row" id="ex-leg-chips"></div>
       </div>
       <div class="section-header">환전 기록 추가</div>
       <div class="form-group">
@@ -368,6 +391,10 @@ input[type="date"].form-input{font-size:var(--text-body);-webkit-appearance:none
         <select id="sp-trip-sel" class="form-input">
           <option value="">— 여행을 선택해주세요 —</option>
         </select>
+      </div>
+      <div class="leg-chip-bar" id="sp-leg-bar">
+        <label class="form-label" style="margin-bottom:6px">나라 / 통화</label>
+        <div class="chip-row" id="sp-leg-chips"></div>
       </div>
       <div class="section-header">지출 기록 추가</div>
       <div class="form-group">
@@ -423,21 +450,10 @@ input[type="date"].form-input{font-size:var(--text-body);-webkit-appearance:none
           <input id="mg-end" type="date" class="form-input">
         </div>
         <div class="form-group">
-          <label class="form-label" for="mg-cur">기준 화폐</label>
-          <select id="mg-cur" class="form-input">
-            <option value="USD">USD — 미국 달러</option>
-            <option value="JPY">JPY — 일본 엔</option>
-            <option value="CNY">CNY — 중국 위안</option>
-            <option value="EUR">EUR — 유로</option>
-            <option value="THB">THB — 태국 바트</option>
-            <option value="VND">VND — 베트남 동</option>
-            <option value="TWD">TWD — 대만 달러</option>
-            <option value="HKD">HKD — 홍콩 달러</option>
-            <option value="MYR">MYR — 말레이시아 링깃</option>
-            <option value="SGD">SGD — 싱가포르 달러</option>
-            <option value="GBP">GBP — 영국 파운드</option>
-            <option value="기타">기타</option>
-          </select>
+          <label class="form-label">나라 / 통화 구간</label>
+          <div id="mg-legs"></div>
+          <button class="btn-add-leg" id="mg-add-leg" type="button">＋ 나라 추가</button>
+          <div class="form-hint">한 여행에 여러 나라를 추가할 수 있어요. 카드 원화결제는 KRW 구간을 쓰세요.</div>
         </div>
         <div class="form-group">
           <div class="form-error" id="mg-err"></div>
@@ -559,6 +575,12 @@ input[type="date"].form-input{font-size:var(--text-body);-webkit-appearance:none
             <input id="ed-end" type="date" class="form-input">
           </div>
         </div>
+        <div class="form-group" id="ed-legs-group" style="display:none">
+          <label class="form-label">나라 / 통화 구간</label>
+          <div id="ed-legs"></div>
+          <button class="btn-add-leg" id="ed-add-leg" type="button">＋ 나라 추가</button>
+          <div class="form-hint">기록이 있는 구간은 통화 변경·삭제가 잠깁니다.</div>
+        </div>
         <div class="form-group">
           <div class="form-error" id="ed-err"></div>
           <button class="btn btn-primary" id="ed-save" type="button">저장하기</button>
@@ -659,6 +681,15 @@ const CATS = ['식비','교통','숙박','관광','기타'];
 const CAT_COLOR = { 교통:'#0A84FF', 숙박:'#5AC8FA', 식비:'#FF9F0A', 관광:'#30D158', 기타:'rgba(245,245,247,0.28)' };
 const DAY = ['일','월','화','수','목','금','토'];
 
+// ─── 통화 목록 (구간 통화 선택용) ───
+const CURRENCIES = [
+  ['KRW','원화 직접결제 (카드 등)'],
+  ['USD','미국 달러'], ['JPY','일본 엔'], ['CNY','중국 위안'], ['EUR','유로'],
+  ['THB','태국 바트'], ['VND','베트남 동'], ['TWD','대만 달러'], ['HKD','홍콩 달러'],
+  ['MYR','말레이시아 링깃'], ['SGD','싱가포르 달러'], ['GBP','영국 파운드'], ['기타','기타'],
+];
+const curOptionsHtml = sel => CURRENCIES.map(([c,n])=>`<option value="${c}"${c===sel?' selected':''}>${c} — ${n}</option>`).join('');
+
 // ─── Firebase 초기화 ───
 const fbApp = initializeApp(firebaseConfig);
 const db    = initializeFirestore(fbApp, {
@@ -673,6 +704,8 @@ const S = {
   expenses: [],
   exTripId:        '',
   spTripId:        '',
+  exCur:           '',   // 환전 탭에서 선택된 구간 통화
+  spCur:           '',   // 지출 탭에서 선택된 구간 통화
   spCat:           '식비',
   detailId:        null,
   pending:         null,   // { type, id }
@@ -758,18 +791,56 @@ const tripById = id => S.trips.find(t=>t.id===id);
 const tripExs  = id => S.exchanges.filter(e=>e.tripId===id);
 const tripExps = id => S.expenses.filter(e=>e.tripId===id);
 
+// ─── 구간(나라) 정규화 ───
+// 신규 여행은 legs:[{name,currency}]. 기존 단일통화 여행은 currency로 폴백(마이그레이션 불필요).
+function tripLegs(t) {
+  if (t && Array.isArray(t.legs) && t.legs.length) return t.legs;
+  const c = t?.currency || '';
+  return [{ name: c, currency: c }];
+}
+// 기록의 실효 통화: 기록 자체 currency → 없으면 여행의 첫 구간(기존 단일통화)
+function recCur(rec, t) {
+  return rec?.currency || t?.currency || (tripLegs(t)[0]?.currency) || '';
+}
+const isKRWcur = c => c === 'KRW';
+
+// 특정 구간(통화)의 환전/지출만
+function legExs(tripId, cur)  { const t=tripById(tripId); return tripExs(tripId).filter(e=>recCur(e,t)===cur); }
+function legExps(tripId, cur) { const t=tripById(tripId); return tripExps(tripId).filter(e=>recCur(e,t)===cur); }
+
+// 구간별 평균환율 (KRW 구간은 1:1)
+function legAvgRate(tripId, cur) {
+  if (isKRWcur(cur)) return 1;
+  const exs = legExs(tripId, cur);
+  const l = exs.reduce((s,e)=>s+(e.amountLocal||0),0);
+  const k = exs.reduce((s,e)=>s+(e.amountKRW||0),0);
+  return l>0 ? k/l : 0;
+}
+
 function tripStats(tripId) {
+  const t    = tripById(tripId);
+  const legs = tripLegs(t);
   const exs  = tripExs(tripId);
   const exps = tripExps(tripId);
-  const exLocal = exs.reduce((s,e)=>s+(e.amountLocal||0),0);
-  const exKRW   = exs.reduce((s,e)=>s+(e.amountKRW||0),0);
-  const spLocal = exps.reduce((s,e)=>s+(e.amountLocal||0),0);
-  const spKRW   = exps.reduce((s,e)=>s+(e.amountKRW||0),0);
-  const avgRate = exLocal>0 ? exKRW/exLocal : 0;
-  const wallet  = exLocal - spLocal;
-  const byCat   = Object.fromEntries(CATS.map(c=>[c,0]));
+  // 구간별 통계
+  const perLeg = legs.map(leg => {
+    const cur = leg.currency;
+    const le  = exs.filter(e=>recCur(e,t)===cur);
+    const lp  = exps.filter(e=>recCur(e,t)===cur);
+    const exLocal = le.reduce((s,e)=>s+(e.amountLocal||0),0);
+    const exKRW   = le.reduce((s,e)=>s+(e.amountKRW||0),0);
+    const spLocal = lp.reduce((s,e)=>s+(e.amountLocal||0),0);
+    const spKRW   = lp.reduce((s,e)=>s+(e.amountKRW||0),0);
+    const avgRate = isKRWcur(cur) ? 1 : (exLocal>0 ? exKRW/exLocal : 0);
+    const wallet  = exLocal - spLocal;
+    return { name:leg.name, currency:cur, isKRW:isKRWcur(cur), exLocal, exKRW, spLocal, spKRW, avgRate, wallet, exCount:le.length };
+  });
+  // 여행 전체 KRW 합계 (공통 분모)
+  const exKRW = exs.reduce((s,e)=>s+(e.amountKRW||0),0);
+  const spKRW = exps.reduce((s,e)=>s+(e.amountKRW||0),0);
+  const byCat = Object.fromEntries(CATS.map(c=>[c,0]));
   exps.forEach(e=>{ const c=e.category||'기타'; byCat[c]=(byCat[c]||0)+(e.amountKRW||0); });
-  return { exLocal, exKRW, spLocal, spKRW, avgRate, wallet, byCat };
+  return { perLeg, exKRW, spKRW, byCat };
 }
 
 // ─── Firestore ───
@@ -813,7 +884,7 @@ async function addExchange(data) {
   const item = {id:ref.id,...data};
   S.exchanges.push(item);
   const t = tripById(data.tripId);
-  gasBackup('addExchange', {tripTitle:t?.title||'', date:data.date, amountLocal:data.amountLocal, amountKRW:data.amountKRW, payer:data.payer, docId:ref.id});
+  gasBackup('addExchange', {tripTitle:t?.title||'', currency:data.currency||'', date:data.date, amountLocal:data.amountLocal, amountKRW:data.amountKRW, payer:data.payer, docId:ref.id});
   return item;
 }
 
@@ -827,7 +898,7 @@ async function addExpense(data) {
   const item = {id:ref.id,...data};
   S.expenses.push(item);
   const t = tripById(data.tripId);
-  gasBackup('addTripExpense', {tripTitle:t?.title||'', date:data.date, category:data.category, detail:data.detail, amountLocal:data.amountLocal, amountKRW:data.amountKRW, payer:data.payer, docId:ref.id});
+  gasBackup('addTripExpense', {tripTitle:t?.title||'', currency:data.currency||'', date:data.date, category:data.category, detail:data.detail, amountLocal:data.amountLocal, amountKRW:data.amountKRW, payer:data.payer, docId:ref.id});
   return item;
 }
 
@@ -869,7 +940,7 @@ async function gasBackup(action, data) {
 // ─── 여행 선택 동기화 ───
 function syncTripSelects() {
   const opts = ['<option value="">— 여행을 선택해주세요 —</option>',
-    ...S.trips.map(t=>`<option value="${esc(t.id)}">${esc(t.title)} (${esc(t.currency||'')})</option>`)
+    ...S.trips.map(t=>`<option value="${esc(t.id)}">${esc(t.title)} (${tripLegs(t).map(l=>esc(l.currency)).join('·')})</option>`)
   ].join('');
   ['ex-trip-sel','sp-trip-sel'].forEach(id=>{
     const el=document.getElementById(id);
@@ -880,22 +951,57 @@ function syncTripSelects() {
   renderManage();
 }
 
+// 환전 가능한 구간 = KRW 제외 (원화는 환전 개념 없음)
+const exLegList = t => tripLegs(t).filter(l=>!isKRWcur(l.currency));
+
+function legChipsHtml(legs, activeCur) {
+  return legs.map(l=>`<button class="chip${l.currency===activeCur?' active':''}" data-cur="${esc(l.currency)}" type="button">${esc(l.name)} · ${esc(l.currency)}</button>`).join('');
+}
+
 function onExTripChange(id) {
   S.exTripId = id;
-  const cur = tripById(id)?.currency||'—';
-  document.getElementById('ex-cur-sfx').textContent = cur;
-  document.getElementById('ex-local-lbl').textContent = `충전 금액 (${cur})`;
+  const t = tripById(id);
+  const legs = t ? exLegList(t) : [];
+  const bar = document.getElementById('ex-leg-bar');
+  if (legs.length>1) {
+    document.getElementById('ex-leg-chips').innerHTML = legChipsHtml(legs, S.exCur);
+    document.querySelectorAll('#ex-leg-chips .chip').forEach(b=>b.addEventListener('click',()=>setExLeg(b.dataset.cur)));
+    bar.classList.add('show');
+  } else { bar.classList.remove('show'); }
+  setExLeg(legs.some(l=>l.currency===S.exCur) ? S.exCur : (legs[0]?.currency||''));
+}
+
+function setExLeg(cur) {
+  S.exCur = cur;
+  document.querySelectorAll('#ex-leg-chips .chip').forEach(b=>b.classList.toggle('active',b.dataset.cur===cur));
+  const sfx = cur||'—';
+  document.getElementById('ex-cur-sfx').textContent = sfx;
+  document.getElementById('ex-local-lbl').textContent = `충전 금액 (${sfx})`;
   refreshExRateHint();
-  renderExList(id);
+  renderExList(S.exTripId);
 }
 
 function onSpTripChange(id) {
   S.spTripId = id;
-  const cur = tripById(id)?.currency||'—';
-  document.getElementById('sp-cur-sfx').textContent = cur;
-  document.getElementById('sp-local-lbl').textContent = `금액 (${cur})`;
+  const t = tripById(id);
+  const legs = t ? tripLegs(t) : [];
+  const bar = document.getElementById('sp-leg-bar');
+  if (legs.length>1) {
+    document.getElementById('sp-leg-chips').innerHTML = legChipsHtml(legs, S.spCur);
+    document.querySelectorAll('#sp-leg-chips .chip').forEach(b=>b.addEventListener('click',()=>setSpLeg(b.dataset.cur)));
+    bar.classList.add('show');
+  } else { bar.classList.remove('show'); }
+  setSpLeg(legs.some(l=>l.currency===S.spCur) ? S.spCur : (legs[0]?.currency||''));
+}
+
+function setSpLeg(cur) {
+  S.spCur = cur;
+  document.querySelectorAll('#sp-leg-chips .chip').forEach(b=>b.classList.toggle('active',b.dataset.cur===cur));
+  const krw = isKRWcur(cur);
+  document.getElementById('sp-cur-sfx').textContent = krw ? '원' : (cur||'—');
+  document.getElementById('sp-local-lbl').textContent = krw ? '금액 (원화 직접결제)' : `금액 (${cur||'—'})`;
   refreshSpKrwHint();
-  renderSpList(id);
+  renderSpList(S.spTripId);
 }
 
 function refreshExRateHint() {
@@ -903,7 +1009,7 @@ function refreshExRateHint() {
   const local = parseN(document.getElementById('ex-local').value);
   const krw   = parseN(document.getElementById('ex-krw').value);
   if (local>0 && krw>0) {
-    const cur = tripById(S.exTripId)?.currency||'';
+    const cur = S.exCur||'';
     hint.textContent = `이 환전 환율: ${(krw/local).toLocaleString('ko-KR',{maximumFractionDigits:2})} 원/${cur}`;
     hint.className = 'form-hint highlight';
   } else { hint.textContent=''; hint.className='form-hint'; }
@@ -913,10 +1019,14 @@ function refreshSpKrwHint() {
   const hint = document.getElementById('sp-krw-hint');
   const local = parseN(document.getElementById('sp-local').value);
   if (!local || !S.spTripId) { hint.textContent=''; return; }
-  const st = tripStats(S.spTripId);
-  if (st.avgRate<=0) { hint.textContent='환전 내역이 없어 원화 자동 계산 불가'; hint.className='form-hint'; return; }
-  const cur = tripById(S.spTripId)?.currency||'';
-  hint.textContent = `≈ ${fmtKRW(Math.round(local*st.avgRate))} (평균환율 ${st.avgRate.toLocaleString('ko-KR',{maximumFractionDigits:1})} 원/${cur})`;
+  const cur = S.spCur||'';
+  if (isKRWcur(cur)) {
+    hint.textContent = `원화 직접결제 — ${fmtKRW(Math.round(local))}`;
+    hint.className = 'form-hint highlight'; return;
+  }
+  const rate = legAvgRate(S.spTripId, cur);
+  if (rate<=0) { hint.textContent='이 나라의 환전 내역이 없어 원화 자동 계산 불가'; hint.className='form-hint'; return; }
+  hint.textContent = `≈ ${fmtKRW(Math.round(local*rate))} (평균환율 ${rate.toLocaleString('ko-KR',{maximumFractionDigits:1})} 원/${cur})`;
   hint.className = 'form-hint highlight';
 }
 
@@ -927,27 +1037,30 @@ function renderHome() {
   if (S.trips.length===0) { list.innerHTML=''; empty.style.display='flex'; return; }
   empty.style.display='none';
   list.innerHTML = S.trips.map(t => {
-    const st  = tripStats(t.id);
-    const cur = t.currency||'';
+    const st   = tripStats(t.id);
+    const legs = tripLegs(t);
+    const curBadge = legs.map(l=>esc(l.currency)).join(' · ');
     const dr  = [t.startDate,t.endDate].filter(Boolean).map(fmtDateShort).join(' ~ ')||'기간 미정';
-    const avgStr = st.avgRate>0
-      ? `<div class="trip-stat"><span class="trip-stat-label">평균환율</span><span class="trip-stat-val">${st.avgRate.toLocaleString('ko-KR',{maximumFractionDigits:1})} 원/${esc(cur)}</span></div>`
-      : '';
-    const walletStr = st.exLocal>0
-      ? `<div class="trip-stat"><span class="trip-stat-label">잔액</span><span class="trip-stat-val" style="${st.wallet<0?'color:var(--danger)':''}">${fmtLocal(st.wallet,cur)}</span></div>`
-      : '';
+    // 단일 통화(비KRW) 여행이면 기존처럼 평균환율·잔액도 표시
+    let extra = '';
+    if (legs.length===1 && !st.perLeg[0].isKRW) {
+      const lg = st.perLeg[0];
+      if (lg.avgRate>0) extra += `<div class="trip-stat"><span class="trip-stat-label">평균환율</span><span class="trip-stat-val">${lg.avgRate.toLocaleString('ko-KR',{maximumFractionDigits:1})} 원/${esc(lg.currency)}</span></div>`;
+      if (lg.exLocal>0) extra += `<div class="trip-stat"><span class="trip-stat-label">잔액</span><span class="trip-stat-val" style="${lg.wallet<0?'color:var(--danger)':''}">${fmtLocal(lg.wallet,lg.currency)}</span></div>`;
+    } else if (legs.length>1) {
+      extra += `<div class="trip-stat"><span class="trip-stat-label">구간</span><span class="trip-stat-val">${legs.length}개 나라</span></div>`;
+    }
     return `
     <button class="trip-card" data-id="${esc(t.id)}" type="button">
       <div class="trip-card-top">
         <span class="trip-card-title">${esc(t.title)}</span>
-        <span class="trip-card-currency">${esc(cur)}</span>
+        <span class="trip-card-currency">${curBadge}</span>
       </div>
       <div class="trip-card-dates">${esc(dr)}</div>
       <div class="trip-card-stats">
         <div class="trip-stat"><span class="trip-stat-label">총 지출</span><span class="trip-stat-val">${fmtKRW(st.spKRW)}</span></div>
         <div class="trip-stat"><span class="trip-stat-label">총 환전</span><span class="trip-stat-val">${fmtKRW(st.exKRW)}</span></div>
-        ${walletStr}
-        ${avgStr}
+        ${extra}
       </div>
     </button>`;
   }).join('');
@@ -971,13 +1084,50 @@ function closeDetail() {
 }
 
 function renderDetailBody(trip) {
-  const st  = tripStats(trip.id);
-  const cur = trip.currency||'';
+  const st   = tripStats(trip.id);
+  const legs = st.perLeg;
+  const multi = legs.length>1;
   const exps = tripExps(trip.id).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
-  const walletClass = st.wallet<0 ? 'red' : 'blue';
-  const walletKRW = st.avgRate>0 ? '≈ '+fmtKRW(Math.round(st.wallet*st.avgRate)) : '';
 
-  // category bars
+  // 나라별 섹션
+  const legSecs = legs.map(lg=>{
+    let cards;
+    if (lg.isKRW) {
+      cards = `<div class="stat-card full">
+        <div class="sc-label">원화 직접결제 지출</div>
+        <div class="sc-value">${fmtKRW(lg.spKRW)}</div>
+        <div class="sc-sub">카드 등 원화 결제</div>
+      </div>`;
+    } else {
+      const walletClass = lg.wallet<0 ? 'red' : 'blue';
+      const walletKRW = lg.avgRate>0 ? '≈ '+fmtKRW(Math.round(lg.wallet*lg.avgRate)) : '';
+      cards = `
+      <div class="stat-card">
+        <div class="sc-label">현지 지출</div>
+        <div class="sc-value">${fmtLocal(lg.spLocal,lg.currency)}</div>
+        <div class="sc-sub">${fmtKRW(lg.spKRW)}</div>
+      </div>
+      <div class="stat-card">
+        <div class="sc-label">환전</div>
+        <div class="sc-value">${fmtLocal(lg.exLocal,lg.currency)}</div>
+        <div class="sc-sub">${fmtKRW(lg.exKRW)}</div>
+      </div>
+      <div class="stat-card ${walletClass} full">
+        <div class="sc-label">트래블월렛 잔액</div>
+        <div class="sc-value">${fmtLocal(lg.wallet,lg.currency)}</div>
+        <div class="sc-sub">${walletKRW||'환전 내역이 없습니다'}</div>
+      </div>
+      ${lg.avgRate>0?`<div class="stat-card full">
+        <div class="sc-label">가중 평균 환율</div>
+        <div class="sc-value">${lg.avgRate.toLocaleString('ko-KR',{maximumFractionDigits:2})}<span style="font-size:var(--text-caption);font-weight:var(--fw-regular);color:var(--text-sub)"> 원/${esc(lg.currency)}</span></div>
+        <div class="sc-sub">${lg.exCount}건 환전 기준</div>
+      </div>`:''}`;
+    }
+    const head = multi ? `<div class="leg-sec-head"><span class="leg-sec-name">${esc(lg.name)}</span><span class="leg-sec-cur">${esc(lg.currency)}</span></div>` : '';
+    return `${head}<div class="stat-cards">${cards}</div>`;
+  }).join('');
+
+  // 카테고리별 (KRW 통합)
   const catBars = CATS.map(cat=>{
     const v=st.byCat[cat]||0;
     const pct=st.spKRW>0 ? (v/st.spKRW*100).toFixed(1) : 0;
@@ -988,21 +1138,22 @@ function renderDetailBody(trip) {
     </div>`;
   }).join('');
 
-  // timeline
+  // 타임라인 (통합, 항목별 통화 표시)
   const byDate={};
   exps.forEach(e=>{const d=e.date||'';if(!byDate[d])byDate[d]=[];byDate[d].push(e);});
   const tl = Object.keys(byDate).sort((a,b)=>b.localeCompare(a)).map(date=>{
     const rows = byDate[date].map(e=>{
       const cls = `cpill cpill-${esc(e.category||'기타')}`;
+      const c = recCur(e, trip), isk = isKRWcur(c);
       return `<div class="tl-item">
         <div class="tl-dot" style="background:${CAT_COLOR[e.category]||'rgba(245,245,247,0.3)'}"></div>
         <div class="tl-info">
           <div class="tl-name">${esc(e.detail||'(내역 없음)')}</div>
-          <div class="tl-sub"><span class="${esc(cls)}">${esc(e.category||'기타')}</span></div>
+          <div class="tl-sub"><span class="${esc(cls)}">${esc(e.category||'기타')}</span>${multi?`<span class="leg-sec-cur">${esc(c)}</span>`:''}</div>
         </div>
         <div class="tl-amt">
-          <div class="tl-amt-local">${fmtLocal(e.amountLocal,cur)}</div>
-          <div class="tl-amt-krw">${fmtKRW(e.amountKRW)}</div>
+          <div class="tl-amt-local">${isk?fmtKRW(e.amountKRW):fmtLocal(e.amountLocal,c)}</div>
+          ${isk?'':`<div class="tl-amt-krw">${fmtKRW(e.amountKRW)}</div>`}
         </div>
       </div>`;
     }).join('');
@@ -1011,27 +1162,19 @@ function renderDetailBody(trip) {
 
   document.getElementById('detail-body').innerHTML = `
     <div class="stat-cards">
-      <div class="stat-card">
-        <div class="sc-label">총 지출</div>
+      <div class="stat-card blue">
+        <div class="sc-label">총 지출 (KRW)</div>
         <div class="sc-value" id="sc-sp">${fmtKRW(st.spKRW)}</div>
-        <div class="sc-sub">${fmtLocal(st.spLocal,cur)}</div>
+        <div class="sc-sub">${multi?legs.length+'개 나라 합계':'원화 환산'}</div>
       </div>
       <div class="stat-card">
-        <div class="sc-label">총 환전</div>
+        <div class="sc-label">총 환전 (KRW)</div>
         <div class="sc-value" id="sc-ex">${fmtKRW(st.exKRW)}</div>
-        <div class="sc-sub">${fmtLocal(st.exLocal,cur)}</div>
+        <div class="sc-sub">전체 환전 합계</div>
       </div>
-      <div class="stat-card ${walletClass} full">
-        <div class="sc-label">트래블월렛 잔액</div>
-        <div class="sc-value" id="sc-wallet">${fmtLocal(st.wallet,cur)}</div>
-        <div class="sc-sub">${walletKRW||'환전 내역이 없습니다'}</div>
-      </div>
-      ${st.avgRate>0?`<div class="stat-card full">
-        <div class="sc-label">가중 평균 환율</div>
-        <div class="sc-value">${st.avgRate.toLocaleString('ko-KR',{maximumFractionDigits:2})}<span style="font-size:var(--text-caption);font-weight:var(--fw-regular);color:var(--text-sub)"> 원/${esc(cur)}</span></div>
-        <div class="sc-sub">${tripExs(trip.id).length}건 환전 기준</div>
-      </div>`:''}
     </div>
+    ${multi?'<div class="section-header">나라별 내역</div>':''}
+    ${legSecs}
     ${st.spKRW>0?`<div class="section-header">카테고리별 지출</div>${catBars}`:''}
     ${exps.length>0?`<div class="section-header">일자별 지출 내역</div><div class="list-wrap">${tl}</div>`:''}
     <div style="padding:24px 16px 8px">
@@ -1045,7 +1188,6 @@ function renderDetailBody(trip) {
   `;
   animateValue(document.getElementById('sc-sp'), st.spKRW, v=>fmtKRW(Math.round(v)));
   animateValue(document.getElementById('sc-ex'), st.exKRW, v=>fmtKRW(Math.round(v)));
-  animateValue(document.getElementById('sc-wallet'), st.wallet, v=>fmtLocal(v,cur));
   document.getElementById('export-btn')?.addEventListener('click',()=>openExport(trip.id));
 }
 
@@ -1112,9 +1254,9 @@ async function submitExport() {
 // ─── 렌더: 환전 목록 ───
 function renderExList(tripId) {
   const el  = document.getElementById('ex-list');
-  const cur = tripById(tripId)?.currency||'';
-  const exs = tripExs(tripId).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
-  if (!tripId||exs.length===0) {
+  const cur = S.exCur||'';
+  const exs = (tripId&&cur) ? legExs(tripId, cur).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')) : [];
+  if (!tripId||!cur||exs.length===0) {
     el.innerHTML=`<div class="empty-sm"><span class="empty-icon">💱</span><span class="empty-sub">${tripId?'환전 내역이 없습니다':'여행을 선택하면 환전 내역이 표시됩니다'}</span></div>`;
     return;
   }
@@ -1142,9 +1284,10 @@ function renderExList(tripId) {
 // ─── 렌더: 지출 목록 ───
 function renderSpList(tripId) {
   const el  = document.getElementById('sp-list');
-  const cur = tripById(tripId)?.currency||'';
-  const exps = tripExps(tripId).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
-  if (!tripId||exps.length===0) {
+  const cur = S.spCur||'';
+  const krw = isKRWcur(cur);
+  const exps = (tripId&&cur) ? legExps(tripId, cur).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')) : [];
+  if (!tripId||!cur||exps.length===0) {
     el.innerHTML=`<div class="empty-sm"><span class="empty-icon">🧾</span><span class="empty-sub">${tripId?'지출 내역이 없습니다':'여행을 선택하면 지출 내역이 표시됩니다'}</span></div>`;
     return;
   }
@@ -1157,8 +1300,8 @@ function renderSpList(tripId) {
         <div class="list-item-meta"><span class="${esc(cls)}">${esc(ex.category||'기타')}</span></div>
       </div>
       <div class="list-item-right">
-        <div class="list-item-local">${fmtLocal(ex.amountLocal,cur)}</div>
-        <div class="list-item-krw">${fmtKRW(ex.amountKRW)}</div>
+        <div class="list-item-local">${krw ? fmtKRW(ex.amountKRW) : fmtLocal(ex.amountLocal,cur)}</div>
+        ${krw ? '' : `<div class="list-item-krw">${fmtKRW(ex.amountKRW)}</div>`}
       </div>
       <button class="icon-btn" data-del-sp="${esc(ex.id)}" type="button" aria-label="삭제">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
@@ -1167,6 +1310,51 @@ function renderSpList(tripId) {
   }).join('')}</div>`;
   el.querySelectorAll('[data-del-sp]').forEach(b=>b.addEventListener('click',()=>askDel('expense',b.dataset.delSp,'이 지출 내역을 삭제할까요?')));
   el.querySelectorAll('[data-edit-sp]').forEach(b=>b.addEventListener('click',()=>openEdit('expense',b.dataset.editSp)));
+}
+
+// ─── 구간(나라) 에디터 (새 여행 / 여행 수정 공용) ───
+function legRowHtml(leg, locked) {
+  const dis = locked ? ' disabled' : '';
+  return `<div class="leg-row" data-locked="${locked?1:0}">
+    <input class="form-input leg-name" type="text" placeholder="나라/구간명" maxlength="20" autocomplete="off" value="${esc(leg?.name||'')}">
+    <select class="form-input leg-cur"${dis}>${curOptionsHtml(leg?.currency||'CNY')}</select>
+    <button class="leg-del" type="button" aria-label="삭제"${dis}${locked?' style="opacity:.3"':''}>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </button>
+  </div>`;
+}
+function legDelHandler(containerId) {
+  return function() {
+    if (this.disabled) return;
+    const el = document.getElementById(containerId);
+    if (el.querySelectorAll('.leg-row').length <= 1) { toast('구간은 최소 1개 필요합니다'); return; }
+    this.closest('.leg-row').remove();
+  };
+}
+function legEditorRender(containerId, legs) {
+  const el = document.getElementById(containerId);
+  const arr = (legs && legs.length) ? legs : [{ name:'', currency:'CNY' }];
+  el.innerHTML = arr.map(l => legRowHtml(l, l._locked)).join('');
+  el.querySelectorAll('.leg-del').forEach(b => b.addEventListener('click', legDelHandler(containerId)));
+}
+function legEditorAdd(containerId) {
+  const el = document.getElementById(containerId);
+  el.insertAdjacentHTML('beforeend', legRowHtml({ name:'', currency:'CNY' }, false));
+  el.lastElementChild.querySelector('.leg-del').addEventListener('click', legDelHandler(containerId));
+  el.lastElementChild.querySelector('.leg-name').focus();
+}
+function legEditorRead(containerId) {
+  return [...document.getElementById(containerId).querySelectorAll('.leg-row')].map(r => {
+    const currency = r.querySelector('.leg-cur').value;
+    const name = r.querySelector('.leg-name').value.trim() || currency;
+    return { name, currency };
+  });
+}
+// 통화 중복 검사 (구간 키 = 통화). 중복이면 통화코드 반환, 정상이면 ''
+function dupCurrency(legs) {
+  const seen = new Set();
+  for (const l of legs) { if (seen.has(l.currency)) return l.currency; seen.add(l.currency); }
+  return '';
 }
 
 // ─── 렌더: 관리 탭 ───
@@ -1178,9 +1366,10 @@ function renderManage() {
   }
   el.innerHTML = S.trips.map(t=>{
     const dr=[t.startDate,t.endDate].filter(Boolean).map(fmtDateShort).join(' ~ ')||'기간 미정';
+    const curBadge=tripLegs(t).map(l=>esc(l.currency)).join(' · ');
     return `<div class="mg-trip-row">
       <div class="mg-trip-info" data-edit-trip="${esc(t.id)}">
-        <div class="mg-trip-title">${esc(t.title)} <span class="trip-card-currency">${esc(t.currency||'')}</span></div>
+        <div class="mg-trip-title">${esc(t.title)} <span class="trip-card-currency">${curBadge}</span></div>
         <div class="mg-trip-dates">${esc(dr)}</div>
       </div>
       <button class="icon-btn" data-del-trip="${esc(t.id)}" data-trip-name="${esc(t.title)}" type="button" aria-label="삭제">
@@ -1207,10 +1396,10 @@ function openEdit(kind, id) {
   document.getElementById('ed-err').classList.remove('show');
   if (kind==='exchange') {
     const ex=S.exchanges.find(e=>e.id===id); if(!ex) return;
-    const cur=tripById(ex.tripId)?.currency||'—';
+    const cur=recCur(ex, tripById(ex.tripId))||'—';
     document.getElementById('edit-title').textContent='환전 내역 수정';
     show('ed-date-group',true); show('ed-cat-group',false); show('ed-detail-group',false);
-    show('ed-local-group',true); show('ed-krw-group',true); show('ed-title-group',false); show('ed-dates-group',false);
+    show('ed-local-group',true); show('ed-krw-group',true); show('ed-title-group',false); show('ed-dates-group',false); show('ed-legs-group',false);
     document.getElementById('ed-local-lbl').textContent=`충전 금액 (${cur})`;
     document.getElementById('ed-cur-sfx').textContent=cur;
     document.getElementById('ed-date').value=ex.date||'';
@@ -1218,24 +1407,29 @@ function openEdit(kind, id) {
     document.getElementById('ed-krw').value=ex.amountKRW??'';
   } else if (kind==='expense') {
     const ex=S.expenses.find(e=>e.id===id); if(!ex) return;
-    const cur=tripById(ex.tripId)?.currency||'—';
+    const cur=recCur(ex, tripById(ex.tripId))||'—';
+    const isk=isKRWcur(cur);
     document.getElementById('edit-title').textContent='지출 내역 수정';
     show('ed-date-group',true); show('ed-cat-group',true); show('ed-detail-group',true);
-    show('ed-local-group',true); show('ed-krw-group',false); show('ed-title-group',false); show('ed-dates-group',false);
-    document.getElementById('ed-local-lbl').textContent=`금액 (${cur})`;
-    document.getElementById('ed-cur-sfx').textContent=cur;
+    show('ed-local-group',true); show('ed-krw-group',false); show('ed-title-group',false); show('ed-dates-group',false); show('ed-legs-group',false);
+    document.getElementById('ed-local-lbl').textContent=isk?'금액 (원화 직접결제)':`금액 (${cur})`;
+    document.getElementById('ed-cur-sfx').textContent=isk?'원':cur;
     document.getElementById('ed-date').value=ex.date||'';
     document.getElementById('ed-detail').value=ex.detail||'';
-    document.getElementById('ed-local').value=ex.amountLocal??'';
+    document.getElementById('ed-local').value=(isk?ex.amountKRW:ex.amountLocal)??'';
     setEdCat(ex.category||'기타');
   } else if (kind==='trip') {
     const t=tripById(id); if(!t) return;
     document.getElementById('edit-title').textContent='여행 정보 수정';
     show('ed-date-group',false); show('ed-cat-group',false); show('ed-detail-group',false);
-    show('ed-local-group',false); show('ed-krw-group',false); show('ed-title-group',true); show('ed-dates-group',true);
+    show('ed-local-group',false); show('ed-krw-group',false); show('ed-title-group',true); show('ed-dates-group',true); show('ed-legs-group',true);
     document.getElementById('ed-trip-title').value=t.title||'';
     document.getElementById('ed-start').value=t.startDate||'';
     document.getElementById('ed-end').value=t.endDate||'';
+    // 기록 있는 구간은 잠금
+    const usedCurs = new Set([...tripExs(id),...tripExps(id)].map(r=>recCur(r,t)));
+    const legs = tripLegs(t).map(l=>({...l, _locked: usedCurs.has(l.currency)}));
+    legEditorRender('ed-legs', legs);
   } else return;
   openSheet('edit-overlay');
 }
@@ -1265,20 +1459,32 @@ async function submitEdit() {
       if(!detail) return fail('세부 항목을 입력해주세요');
       if(local<=0) return fail('금액을 입력해주세요');
       const ex=S.expenses.find(e=>e.id===id);
-      const st=tripStats(ex?.tripId||'');
-      const krw = st.avgRate>0 ? Math.round(local*st.avgRate) : (ex?.amountKRW||0);
+      const t=tripById(ex?.tripId||'');
+      const c=recCur(ex,t);
+      let krw, amountLocal;
+      if(isKRWcur(c)){ krw=Math.round(local); amountLocal=krw; }
+      else { const rate=legAvgRate(ex?.tripId||'', c); krw=rate>0?Math.round(local*rate):(ex?.amountKRW||0); amountLocal=local; }
       btn.disabled=true; btn.textContent='저장 중...';
-      await updateExpense(id,{date, category:edCat, detail, amountLocal:local, amountKRW:krw});
+      await updateExpense(id,{date, category:edCat, detail, amountLocal, amountKRW:krw});
       renderSpList(S.spTripId);
     } else if (kind==='trip') {
       const title=document.getElementById('ed-trip-title').value.trim();
       const startDate=document.getElementById('ed-start').value;
       const endDate=document.getElementById('ed-end').value;
+      const legs=legEditorRead('ed-legs');
       if(!title) return fail('여행명을 입력해주세요');
+      if(!legs.length) return fail('나라/통화 구간을 1개 이상 추가해주세요');
+      const dup=dupCurrency(legs); if(dup) return fail(`통화 ${dup} 구간이 중복됩니다`);
+      const t=tripById(id);
+      const usedCurs=new Set([...tripExs(id),...tripExps(id)].map(r=>recCur(r,t)));
+      const newCurs=new Set(legs.map(l=>l.currency));
+      for(const c of usedCurs){ if(c && !newCurs.has(c)) return fail(`통화 ${c} 구간에 기록이 있어 삭제할 수 없습니다`); }
       if(startDate && endDate && startDate>endDate) return fail('종료일이 시작일보다 빠릅니다');
       btn.disabled=true; btn.textContent='저장 중...';
-      await updateTrip(id,{title, startDate, endDate});
+      await updateTrip(id,{title, startDate, endDate, legs, currency:legs[0].currency});
       syncTripSelects();
+      if (S.exTripId===id) onExTripChange(id);
+      if (S.spTripId===id) onSpTripChange(id);
       if (S.detailId===id) document.getElementById('detail-title').textContent=title;
     }
     renderHome();
@@ -1405,15 +1611,16 @@ document.getElementById('ex-local').addEventListener('input', refreshExRateHint)
 document.getElementById('ex-krw').addEventListener('input', refreshExRateHint);
 document.getElementById('ex-save').addEventListener('click', async()=>{
   const err=document.getElementById('ex-err'); err.classList.remove('show');
-  const tripId=S.exTripId, date=document.getElementById('ex-date').value;
+  const tripId=S.exTripId, cur=S.exCur, date=document.getElementById('ex-date').value;
   const local=parseN(document.getElementById('ex-local').value), krw=parseN(document.getElementById('ex-krw').value);
   if(!tripId){err.textContent='여행을 선택해주세요';err.classList.add('show');return;}
+  if(!cur){err.textContent='이 여행은 환전할 통화 구간이 없습니다 (원화 직접결제만)';err.classList.add('show');return;}
   if(!date){err.textContent='날짜를 입력해주세요';err.classList.add('show');return;}
   if(local<=0){err.textContent='현지 금액을 입력해주세요';err.classList.add('show');return;}
   if(krw<=0){err.textContent='원화 금액을 입력해주세요';err.classList.add('show');return;}
   const btn=document.getElementById('ex-save'); btn.disabled=true; btn.textContent='저장 중...';
   try {
-    await addExchange({tripId, date, amountLocal:local, amountKRW:krw, payer:S.currentUserName});
+    await addExchange({tripId, currency:cur, date, amountLocal:local, amountKRW:krw, payer:S.currentUserName});
     document.getElementById('ex-local').value='';
     document.getElementById('ex-krw').value='';
     document.getElementById('ex-rate-hint').textContent='';
@@ -1432,19 +1639,25 @@ document.querySelectorAll('#sp-cat-chips .chip').forEach(b=>b.addEventListener('
 }));
 document.getElementById('sp-save').addEventListener('click', async()=>{
   const err=document.getElementById('sp-err'); err.classList.remove('show');
-  const tripId=S.spTripId, date=document.getElementById('sp-date').value;
+  const tripId=S.spTripId, cur=S.spCur, date=document.getElementById('sp-date').value;
   const detail=document.getElementById('sp-detail').value.trim();
   const local=parseN(document.getElementById('sp-local').value);
   if(!tripId){err.textContent='여행을 선택해주세요';err.classList.add('show');return;}
+  if(!cur){err.textContent='나라/통화 구간을 선택해주세요';err.classList.add('show');return;}
   if(!date){err.textContent='날짜를 입력해주세요';err.classList.add('show');return;}
   if(!detail){err.textContent='세부 항목을 입력해주세요';err.classList.add('show');return;}
   if(local<=0){err.textContent='금액을 입력해주세요';err.classList.add('show');return;}
-  const st=tripStats(tripId);
-  if(st.avgRate<=0){err.textContent='환전 내역이 없어 원화 환산이 불가합니다. 환전 탭에서 환전을 먼저 기록해주세요';err.classList.add('show');return;}
-  const krw=Math.round(local*st.avgRate);
+  let krw, amountLocal;
+  if(isKRWcur(cur)){
+    krw = Math.round(local); amountLocal = krw;
+  } else {
+    const rate = legAvgRate(tripId, cur);
+    if(rate<=0){err.textContent='이 나라의 환전 내역이 없어 원화 환산이 불가합니다. 환전 탭에서 먼저 환전을 기록해주세요';err.classList.add('show');return;}
+    krw = Math.round(local*rate); amountLocal = local;
+  }
   const btn=document.getElementById('sp-save'); btn.disabled=true; btn.textContent='저장 중...';
   try {
-    await addExpense({tripId, date, category:S.spCat, detail, amountLocal:local, amountKRW:krw, payer:S.currentUserName});
+    await addExpense({tripId, currency:cur, date, category:S.spCat, detail, amountLocal, amountKRW:krw, payer:S.currentUserName});
     document.getElementById('sp-detail').value='';
     document.getElementById('sp-local').value='';
     document.getElementById('sp-krw-hint').textContent='';
@@ -1456,24 +1669,30 @@ document.getElementById('sp-save').addEventListener('click', async()=>{
 });
 
 // 관리 폼
+legEditorRender('mg-legs', [{ name:'', currency:'CNY' }]);
+document.getElementById('mg-add-leg').addEventListener('click', ()=>legEditorAdd('mg-legs'));
 document.getElementById('mg-save').addEventListener('click', async()=>{
   const err=document.getElementById('mg-err'); err.classList.remove('show');
+  const fail=m=>{err.textContent=m;err.classList.add('show');};
   const title=document.getElementById('mg-title').value.trim();
   const startDate=document.getElementById('mg-start').value;
   const endDate=document.getElementById('mg-end').value;
-  const currency=document.getElementById('mg-cur').value;
-  if(!title){err.textContent='여행명을 입력해주세요';err.classList.add('show');return;}
-  if(!currency){err.textContent='화폐를 선택해주세요';err.classList.add('show');return;}
-  if(startDate && endDate && startDate>endDate){err.textContent='종료일이 시작일보다 빠릅니다';err.classList.add('show');return;}
+  const legs=legEditorRead('mg-legs');
+  if(!title) return fail('여행명을 입력해주세요');
+  if(!legs.length) return fail('나라/통화 구간을 1개 이상 추가해주세요');
+  const dup=dupCurrency(legs);
+  if(dup) return fail(`통화 ${dup} 구간이 중복됩니다. 한 통화는 한 구간만 가능합니다`);
+  if(startDate && endDate && startDate>endDate) return fail('종료일이 시작일보다 빠릅니다');
   const btn=document.getElementById('mg-save'); btn.disabled=true; btn.textContent='저장 중...';
   try {
-    await addTrip({title, startDate, endDate, currency});
+    await addTrip({title, startDate, endDate, legs, currency:legs[0].currency});
     document.getElementById('mg-title').value='';
     document.getElementById('mg-start').value='';
     document.getElementById('mg-end').value='';
+    legEditorRender('mg-legs', [{ name:'', currency:'CNY' }]);
     syncTripSelects(); renderHome();
     toast('새 여행을 만들었습니다');
-  } catch(e){ err.textContent='저장에 실패했습니다.'; err.classList.add('show'); }
+  } catch(e){ fail('저장에 실패했습니다.'); }
   finally { btn.disabled=false; btn.textContent='여행 만들기'; }
 });
 
@@ -1486,6 +1705,7 @@ document.getElementById('del-overlay').addEventListener('click',e=>{
 
 // 수정 시트
 document.getElementById('ed-save').addEventListener('click', submitEdit);
+document.getElementById('ed-add-leg').addEventListener('click', ()=>legEditorAdd('ed-legs'));
 document.querySelectorAll('#ed-cat-chips .chip').forEach(b=>b.addEventListener('click',()=>setEdCat(b.dataset.cat)));
 document.getElementById('edit-overlay').addEventListener('click',e=>{
   if(e.target===document.getElementById('edit-overlay')) closeSheet('edit-overlay');

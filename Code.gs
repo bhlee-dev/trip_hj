@@ -59,7 +59,7 @@ function getOrCreateSheet(name) {
   let sheet = ss.getSheetByName(name);
   if (!sheet) {
     sheet = ss.insertSheet(name);
-    sheet.appendRow(['날짜', '여행명', '구분', '카테고리', '세부항목', '현지금액', '원화금액', '결제자', '기록시각', 'docId']);
+    sheet.appendRow(['날짜', '여행명', '구분', '카테고리', '세부항목', '현지금액', '원화금액', '결제자', '기록시각', 'docId', '통화']);
     sheet.setFrozenRows(1);
   }
   return sheet;
@@ -114,6 +114,7 @@ function addExchange(data) {
 
   const date        = sanitize(data.date || '', 10);
   const tripTitle   = sanitize(data.tripTitle || '', 40);
+  const currency    = sanitize(data.currency || '', 10);
   const amountLocal = parseFloat(data.amountLocal) || 0;
   const amountKRW   = parseInt(data.amountKRW, 10) || 0;
   const payer       = sanitize(data.payer || '', 10);
@@ -122,7 +123,7 @@ function addExchange(data) {
   sheet.appendRow([
     date, tripTitle, '환전', '-', '-',
     amountLocal, amountKRW, payer,
-    new Date().toISOString(), docId
+    new Date().toISOString(), docId, currency
   ]);
 
   return { success: true };
@@ -138,6 +139,7 @@ function addTripExpense(data) {
 
   const date        = sanitize(data.date     || '', 10);
   const tripTitle   = sanitize(data.tripTitle|| '', 40);
+  const currency    = sanitize(data.currency || '', 10);
   const category    = sanitize(data.category || '', 10);
   const detail      = sanitize(data.detail   || '', 50);
   const amountLocal = parseFloat(data.amountLocal) || 0;
@@ -148,7 +150,7 @@ function addTripExpense(data) {
   sheet.appendRow([
     date, tripTitle, '지출', category, detail,
     amountLocal, amountKRW, payer,
-    new Date().toISOString(), docId
+    new Date().toISOString(), docId, currency
   ]);
 
   return { success: true };
