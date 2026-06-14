@@ -226,6 +226,10 @@ input[type="date"].form-input{font-size:var(--text-body);-webkit-appearance:none
 #detail-overlay.show{transform:translateX(0)}
 #detail-header{height:calc(54px + env(safe-area-inset-top,0px));background:rgba(17,17,18,0.82);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:env(safe-area-inset-top,0px) 16px 0;flex-shrink:0;gap:12px}
 #detail-close{background:none;border:none;color:var(--blue);cursor:pointer;font-size:var(--text-body);font-weight:var(--fw-medium);font-family:inherit;-webkit-tap-highlight-color:transparent;display:flex;align-items:center;gap:5px;padding:8px 0;flex-shrink:0}
+#detail-edit{background:none;border:none;color:var(--blue);cursor:pointer;-webkit-tap-highlight-color:transparent;display:flex;align-items:center;justify-content:center;padding:8px;flex-shrink:0}
+.tl-edit-ind{color:var(--text-faint,rgba(245,245,247,0.3));flex-shrink:0;margin-left:2px}
+.tl-item[data-edit-sp]{cursor:pointer;-webkit-tap-highlight-color:transparent}
+.tl-item[data-edit-sp]:active{background:rgba(245,245,247,0.05)}
 #detail-title{font-size:var(--text-h2);font-weight:var(--fw-semibold);color:var(--text);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:var(--ls-snug)}
 #detail-body{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:env(safe-area-inset-bottom,0px)}
 
@@ -321,7 +325,7 @@ input[type="date"].form-input{font-size:var(--text-body);-webkit-appearance:none
       <span id="header-title">여행경비</span>
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-muted)"><polyline points="6 9 12 15 18 9"/></svg>
     </div>
-    <span id="header-version">v3.0</span>
+    <span id="header-version">v3.1</span>
   </header>
 
   <!-- ────── MAIN ────── -->
@@ -494,6 +498,9 @@ input[type="date"].form-input{font-size:var(--text-body);-webkit-appearance:none
         뒤로
       </button>
       <div id="detail-title">여행 상세</div>
+      <button id="detail-edit" type="button" aria-label="여행 정보 수정">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      </button>
     </div>
     <div id="detail-body"></div>
   </div>
@@ -804,6 +811,21 @@ function recCur(rec, t) {
 }
 const isKRWcur = c => c === 'KRW';
 
+// 나라(=해외 통화 구간)만. KRW 구간은 '한국 사전 결제'이지 방문국이 아님
+function tripCountries(t) { return tripLegs(t).filter(l => !isKRWcur(l.currency)); }
+// 홈/관리 배지: 방문국 통화만 표시 (KRW 제외). 국내(해외구간 없음)면 '국내'
+function tripCurBadge(t) {
+  const cs = tripCountries(t).map(l => esc(l.currency));
+  return cs.length ? cs.join(' · ') : '국내';
+}
+// 여행 기간 N박 N일 (날짜 둘 다 있을 때만)
+function tripDuration(t) {
+  if (!t?.startDate || !t?.endDate) return '';
+  const s = new Date(t.startDate), e = new Date(t.endDate);
+  const nights = Math.max(0, Math.round((e - s) / 86400000));
+  return nights > 0 ? `${nights}박 ${nights+1}일` : '당일';
+}
+
 // 특정 구간(통화)의 환전/지출만
 function legExs(tripId, cur)  { const t=tripById(tripId); return tripExs(tripId).filter(e=>recCur(e,t)===cur); }
 function legExps(tripId, cur) { const t=tripById(tripId); return tripExps(tripId).filter(e=>recCur(e,t)===cur); }
@@ -832,8 +854,7 @@ function tripStats(tripId) {
     const spLocal = lp.reduce((s,e)=>s+(e.amountLocal||0),0);
     const spKRW   = lp.reduce((s,e)=>s+(e.amountKRW||0),0);
     const avgRate = isKRWcur(cur) ? 1 : (exLocal>0 ? exKRW/exLocal : 0);
-    const wallet  = exLocal - spLocal;
-    return { name:leg.name, currency:cur, isKRW:isKRWcur(cur), exLocal, exKRW, spLocal, spKRW, avgRate, wallet, exCount:le.length };
+    return { name:leg.name, currency:cur, isKRW:isKRWcur(cur), exLocal, exKRW, spLocal, spKRW, avgRate, exCount:le.length };
   });
   // 여행 전체 KRW 합계 (공통 분모)
   const exKRW = exs.reduce((s,e)=>s+(e.amountKRW||0),0);
@@ -1038,18 +1059,13 @@ function renderHome() {
   empty.style.display='none';
   list.innerHTML = S.trips.map(t => {
     const st   = tripStats(t.id);
-    const legs = tripLegs(t);
-    const curBadge = legs.map(l=>esc(l.currency)).join(' · ');
+    const curBadge = tripCurBadge(t);
     const dr  = [t.startDate,t.endDate].filter(Boolean).map(fmtDateShort).join(' ~ ')||'기간 미정';
-    // 단일 통화(비KRW) 여행이면 기존처럼 평균환율·잔액도 표시
+    const dur = tripDuration(t);
+    const nCountries = tripCountries(t).length;
     let extra = '';
-    if (legs.length===1 && !st.perLeg[0].isKRW) {
-      const lg = st.perLeg[0];
-      if (lg.avgRate>0) extra += `<div class="trip-stat"><span class="trip-stat-label">평균환율</span><span class="trip-stat-val">${lg.avgRate.toLocaleString('ko-KR',{maximumFractionDigits:1})} 원/${esc(lg.currency)}</span></div>`;
-      if (lg.exLocal>0) extra += `<div class="trip-stat"><span class="trip-stat-label">잔액</span><span class="trip-stat-val" style="${lg.wallet<0?'color:var(--danger)':''}">${fmtLocal(lg.wallet,lg.currency)}</span></div>`;
-    } else if (legs.length>1) {
-      extra += `<div class="trip-stat"><span class="trip-stat-label">구간</span><span class="trip-stat-val">${legs.length}개 나라</span></div>`;
-    }
+    if (dur) extra += `<div class="trip-stat"><span class="trip-stat-label">기간</span><span class="trip-stat-val">${esc(dur)}</span></div>`;
+    if (nCountries>1) extra += `<div class="trip-stat"><span class="trip-stat-label">나라</span><span class="trip-stat-val">${nCountries}개국</span></div>`;
     return `
     <button class="trip-card" data-id="${esc(t.id)}" type="button">
       <div class="trip-card-top">
@@ -1058,8 +1074,7 @@ function renderHome() {
       </div>
       <div class="trip-card-dates">${esc(dr)}</div>
       <div class="trip-card-stats">
-        <div class="trip-stat"><span class="trip-stat-label">총 지출</span><span class="trip-stat-val">${fmtKRW(st.spKRW)}</span></div>
-        <div class="trip-stat"><span class="trip-stat-label">총 환전</span><span class="trip-stat-val">${fmtKRW(st.exKRW)}</span></div>
+        <div class="trip-stat"><span class="trip-stat-label">총 지출 (KRW)</span><span class="trip-stat-val">${fmtKRW(st.spKRW)}</span></div>
         ${extra}
       </div>
     </button>`;
@@ -1087,20 +1102,23 @@ function renderDetailBody(trip) {
   const st   = tripStats(trip.id);
   const legs = st.perLeg;
   const multi = legs.length>1;
+  const nCountries = legs.filter(l=>!l.isKRW).length;
+  const hasKRWleg = legs.some(l=>l.isKRW);
+  const dur = tripDuration(trip);
   const exps = tripExps(trip.id).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
 
-  // 나라별 섹션
+  // 구간(나라)별 섹션 — KRW는 '한국 사전 결제(항공·숙소)', 잔액 표시 없음
   const legSecs = legs.map(lg=>{
-    let cards;
+    let cards, headName, headCur;
     if (lg.isKRW) {
+      headName = '한국 사전 결제'; headCur = '항공·숙소 등';
       cards = `<div class="stat-card full">
-        <div class="sc-label">원화 직접결제 지출</div>
+        <div class="sc-label">한국 사전 결제 (KRW)</div>
         <div class="sc-value">${fmtKRW(lg.spKRW)}</div>
-        <div class="sc-sub">카드 등 원화 결제</div>
+        <div class="sc-sub">출국 전 항공·숙소 등 원화 결제</div>
       </div>`;
     } else {
-      const walletClass = lg.wallet<0 ? 'red' : 'blue';
-      const walletKRW = lg.avgRate>0 ? '≈ '+fmtKRW(Math.round(lg.wallet*lg.avgRate)) : '';
+      headName = lg.name; headCur = lg.currency;
       cards = `
       <div class="stat-card">
         <div class="sc-label">현지 지출</div>
@@ -1112,18 +1130,13 @@ function renderDetailBody(trip) {
         <div class="sc-value">${fmtLocal(lg.exLocal,lg.currency)}</div>
         <div class="sc-sub">${fmtKRW(lg.exKRW)}</div>
       </div>
-      <div class="stat-card ${walletClass} full">
-        <div class="sc-label">트래블월렛 잔액</div>
-        <div class="sc-value">${fmtLocal(lg.wallet,lg.currency)}</div>
-        <div class="sc-sub">${walletKRW||'환전 내역이 없습니다'}</div>
-      </div>
       ${lg.avgRate>0?`<div class="stat-card full">
         <div class="sc-label">가중 평균 환율</div>
         <div class="sc-value">${lg.avgRate.toLocaleString('ko-KR',{maximumFractionDigits:2})}<span style="font-size:var(--text-caption);font-weight:var(--fw-regular);color:var(--text-sub)"> 원/${esc(lg.currency)}</span></div>
         <div class="sc-sub">${lg.exCount}건 환전 기준</div>
       </div>`:''}`;
     }
-    const head = multi ? `<div class="leg-sec-head"><span class="leg-sec-name">${esc(lg.name)}</span><span class="leg-sec-cur">${esc(lg.currency)}</span></div>` : '';
+    const head = multi ? `<div class="leg-sec-head"><span class="leg-sec-name">${esc(headName)}</span><span class="leg-sec-cur">${esc(headCur)}</span></div>` : '';
     return `${head}<div class="stat-cards">${cards}</div>`;
   }).join('');
 
@@ -1145,16 +1158,17 @@ function renderDetailBody(trip) {
     const rows = byDate[date].map(e=>{
       const cls = `cpill cpill-${esc(e.category||'기타')}`;
       const c = recCur(e, trip), isk = isKRWcur(c);
-      return `<div class="tl-item">
+      return `<div class="tl-item" data-edit-sp="${esc(e.id)}" role="button" tabindex="0">
         <div class="tl-dot" style="background:${CAT_COLOR[e.category]||'rgba(245,245,247,0.3)'}"></div>
         <div class="tl-info">
           <div class="tl-name">${esc(e.detail||'(내역 없음)')}</div>
-          <div class="tl-sub"><span class="${esc(cls)}">${esc(e.category||'기타')}</span>${multi?`<span class="leg-sec-cur">${esc(c)}</span>`:''}</div>
+          <div class="tl-sub"><span class="${esc(cls)}">${esc(e.category||'기타')}</span>${isk?'<span class="leg-sec-cur">한국 사전결제</span>':(multi?`<span class="leg-sec-cur">${esc(c)}</span>`:'')}</div>
         </div>
         <div class="tl-amt">
           <div class="tl-amt-local">${isk?fmtKRW(e.amountKRW):fmtLocal(e.amountLocal,c)}</div>
           ${isk?'':`<div class="tl-amt-krw">${fmtKRW(e.amountKRW)}</div>`}
         </div>
+        <svg class="tl-edit-ind" width="7" height="12" viewBox="0 0 8 14" fill="none"><path d="M1 1l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </div>`;
     }).join('');
     return `<div class="tl-date">${esc(fmtDateFull(date))}</div>${rows}`;
@@ -1165,7 +1179,7 @@ function renderDetailBody(trip) {
       <div class="stat-card blue">
         <div class="sc-label">총 지출 (KRW)</div>
         <div class="sc-value" id="sc-sp">${fmtKRW(st.spKRW)}</div>
-        <div class="sc-sub">${multi?legs.length+'개 나라 합계':'원화 환산'}</div>
+        <div class="sc-sub">${[dur, nCountries>1?nCountries+'개국':'', hasKRWleg?'한국 사전결제 포함':''].filter(Boolean).join(' · ')||'원화 환산'}</div>
       </div>
       <div class="stat-card">
         <div class="sc-label">총 환전 (KRW)</div>
@@ -1173,7 +1187,7 @@ function renderDetailBody(trip) {
         <div class="sc-sub">전체 환전 합계</div>
       </div>
     </div>
-    ${multi?'<div class="section-header">나라별 내역</div>':''}
+    ${multi?'<div class="section-header">구간별 내역</div>':''}
     ${legSecs}
     ${st.spKRW>0?`<div class="section-header">카테고리별 지출</div>${catBars}`:''}
     ${exps.length>0?`<div class="section-header">일자별 지출 내역</div><div class="list-wrap">${tl}</div>`:''}
@@ -1189,6 +1203,11 @@ function renderDetailBody(trip) {
   animateValue(document.getElementById('sc-sp'), st.spKRW, v=>fmtKRW(Math.round(v)));
   animateValue(document.getElementById('sc-ex'), st.exKRW, v=>fmtKRW(Math.round(v)));
   document.getElementById('export-btn')?.addEventListener('click',()=>openExport(trip.id));
+  document.getElementById('detail-body').querySelectorAll('[data-edit-sp]').forEach(r=>{
+    const open=()=>openEdit('expense', r.dataset.editSp);
+    r.addEventListener('click', open);
+    r.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); open(); } });
+  });
 }
 
 // ─── 가계부 내보내기 ───
@@ -1366,7 +1385,7 @@ function renderManage() {
   }
   el.innerHTML = S.trips.map(t=>{
     const dr=[t.startDate,t.endDate].filter(Boolean).map(fmtDateShort).join(' ~ ')||'기간 미정';
-    const curBadge=tripLegs(t).map(l=>esc(l.currency)).join(' · ');
+    const curBadge=tripCurBadge(t);
     return `<div class="mg-trip-row">
       <div class="mg-trip-info" data-edit-trip="${esc(t.id)}">
         <div class="mg-trip-title">${esc(t.title)} <span class="trip-card-currency">${curBadge}</span></div>
@@ -1601,6 +1620,7 @@ document.getElementById('as-snowball').addEventListener('click',()=>{ window.loc
 
 // 상세 오버레이
 document.getElementById('detail-close').addEventListener('click', closeDetail);
+document.getElementById('detail-edit').addEventListener('click', ()=>{ if(S.detailId) openEdit('trip', S.detailId); });
 
 // 여행 선택
 document.getElementById('ex-trip-sel').addEventListener('change',e=>onExTripChange(e.target.value));

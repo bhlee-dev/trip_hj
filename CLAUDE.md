@@ -20,14 +20,15 @@ balance_hj와 동일 패턴이며 **가계부 내보내기 시 balance 재인증
 - trip_exchanges: `{tripId, currency, date, amountLocal, amountKRW, payer, createdAt}`
 - trip_expenses: `{tripId, currency, date, category, detail, amountLocal, amountKRW, payer, createdAt}`
 
-### 멀티 구간(나라/통화) 구조 — v3.0
+### 멀티 구간(나라/통화) 구조 — v3.0 / v3.1
 한 여행 세트에 여러 나라(통화)를 기록. 핵심: **통화(currency)가 구간(leg)의 키** — 통화당 1구간.
 - `trip.legs` = `[{name:'상하이', currency:'CNY'}, {name:'쿠알라룸푸르', currency:'MYR'}]`. 각 환전/지출 기록은 자신의 `currency`를 가짐.
 - **마이그레이션 불필요(하위호환)**: `tripLegs(t)`는 `legs` 없으면 옛 `trip.currency`로 단일 구간 합성. `recCur(rec,t)`는 기록 `currency` 없으면 `trip.currency`로 폴백. 신규 여행은 `legs` + `currency:legs[0].currency`(폴백용) 둘 다 저장.
 - **평균환율은 구간별**: `legAvgRate = 해당 통화 Σ amountKRW ÷ Σ amountLocal`. CNY와 MYR을 한 평균에 섞지 않음. 지출 KRW 환산도 구간 환율 사용.
-- **KRW 구간 = 원화 직접결제(카드 등)**: rate 고정 1, 환전 개념 없음, `amountLocal===amountKRW`. 환전 탭 구간 칩에서는 KRW 제외(환전 대상 아님), 지출 탭에는 KRW 포함.
+- **KRW 구간 = 한국 사전 결제(항공·숙소 등 출국 전 원화 결제)**: rate 고정 1, 환전 개념 없음, `amountLocal===amountKRW`. 환전 탭 구간 칩에서는 KRW 제외(환전 대상 아님), 지출 탭에는 KRW 포함. **KRW는 방문국이 아님** — 홈/관리 배지(`tripCurBadge`)와 나라 수(`tripCountries`, "N개국")에서 제외. 해외 구간이 없으면 배지는 '국내'.
 - UI: 새 여행 폼·수정 시트에 구간 에디터(`mg-legs`/`ed-legs`, 행 추가/삭제). 환전·지출 탭은 여행 선택 아래 **구간 칩 바**로 통화 전환. 기록 있는 구간은 수정 시 통화 변경/삭제 잠금(`_locked`).
-- 상세 화면: 상단 KRW 총지출/총환전 카드 + 구간별 섹션(`st.perLeg`) + 통합 카테고리 막대 + 통화 표시된 타임라인.
+- **v3.1 — 카드 목적 = "이 여행에서 KRW로 얼마 썼나(몇박 몇일/어디) 한눈에"**: 트래블월렛 잔액 표시 전면 삭제(`tripStats`에서 `wallet` 필드 제거). 홈 카드 = 총 지출(KRW) + 기간(`tripDuration`, N박N일) + 해외 나라 수. 상세 상단 = 총 지출/총 환전 KRW 카드(sub에 기간·N개국·"한국 사전결제 포함"). 구간별 = 현지지출+환전+가중평균환율(KRW 구간은 '한국 사전 결제' 단일 카드).
+- **v3.1 — 상세에서 수정**: 상세 헤더 연필 버튼(`#detail-edit`)→`openEdit('trip', …)`(제목·날짜·구간 수정, 비행기표 구매일로 시작일이 잡힌 경우 날짜 교정 용도). 타임라인 지출 행 탭→`openEdit('expense', id)`. 기록 탭의 목록 탭→수정 로직과 동일 경험. 환전 수정은 기록 탭에서만(상세는 지출 중심).
 
 ### GAS 백업 — 토큰 검증 + text/plain
 - `gasBackup()`은 `{action, token, data}`를 **`Content-Type: 'text/plain'`**으로 POST (GAS는 application/json 차단)
