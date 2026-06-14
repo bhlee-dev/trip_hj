@@ -1081,14 +1081,18 @@ async function getAllSheetsTravel() {
   return j.data || [];
 }
 
+// 시트는 amountKRW를 parseInt(정수 절삭)·amountLocal을 parseFloat로 저장하므로
+// 비교도 같은 정밀도로 맞춰야 함(안 그러면 소수점 차이로 영구 "수정 필요" 발생)
+function sameNumTrunc(a, b) { return Math.trunc(Number(a)||0) === Math.trunc(Number(b)||0); }
+function sameNumTol(a, b, tol) { return Math.abs((Number(a)||0) - (Number(b)||0)) <= tol; }
 function itemsDiffer(a, b) {
-  return String(a.date)      !== String(b.date)
+  return String(a.date).slice(0,10) !== String(b.date).slice(0,10)
       || String(a.type)      !== String(b.type)
       || String(a.tripTitle) !== String(b.tripTitle)
       || String(a.category)  !== String(b.category)
       || String(a.detail)    !== String(b.detail)
-      || (Number(a.amountLocal)||0) !== (Number(b.amountLocal)||0)
-      || (Number(a.amountKRW)||0)   !== (Number(b.amountKRW)||0)
+      || !sameNumTol(a.amountLocal, b.amountLocal, 0.005)
+      || !sameNumTrunc(a.amountKRW, b.amountKRW)
       || String(a.payer)     !== String(b.payer)
       || String(a.currency)  !== String(b.currency);
 }
@@ -1104,7 +1108,7 @@ function computeSyncDiff(fbList, gsList) {
   fbList.forEach(f=>{
     const g = gsMap[String(f.docId)];
     if (!g) toAdd.push(f);
-    else if (itemsDiffer(f, g)) toUpdate.push({ docId:f.docId, data:f });
+    else if (itemsDiffer(f, g)) toUpdate.push({ docId:f.docId, data:f, gs:g });
   });
   gsList.forEach(g=>{
     if (g.docId && !fbMap[String(g.docId)]) toDelete.push(g);
@@ -1143,8 +1147,16 @@ function renderSyncResult(diff) {
     applyBtn.style.display = 'none';
     return;
   }
-  detail.innerHTML =
-      syncPreviewSection('추가', toAdd,    'sync-diff-add', syncItemLabel)
+  let dbg = '';
+  if (toUpdate.length && toUpdate[0].gs) {
+    const u = toUpdate[0], fs = ['date','type','tripTitle','category','detail','amountLocal','amountKRW','payer','currency'];
+    const rows = fs.filter(f=>String(u.data[f])!==String(u.gs[f]))
+      .map(f=>`${f}: 앱"${u.data[f]}" ↔ 시트"${u.gs[f]}"`);
+    if (rows.length) dbg = `<div class="sync-diff-section"><div class="sync-diff-label">진단 (첫 수정건 차이)</div>`
+      + rows.map(r=>`<div class="sync-diff-item" style="white-space:normal;color:var(--text-sub)">${esc(r)}</div>`).join('') + `</div>`;
+  }
+  detail.innerHTML = dbg
+    + syncPreviewSection('추가', toAdd,    'sync-diff-add', syncItemLabel)
     + syncPreviewSection('수정', toUpdate, 'sync-diff-upd', u=>syncItemLabel(u.data))
     + syncPreviewSection('삭제', toDelete, 'sync-diff-del', syncItemLabel);
   applyBtn.style.display = '';
