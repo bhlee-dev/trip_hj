@@ -1402,11 +1402,11 @@ async function applySmartSync() {
   }
 }
 
-// 여행 종료일(없으면 시작일) 기준 한 달이 지나지 않았으면 true — 기본 선택 대상 판단용
+// 여행 종료일(없으면 시작일) 기준 14일이 지나지 않았으면 true — 기본 선택 대상 판단용
 function isTripRecent(t) {
   const end = t && (t.endDate || t.startDate);
   if (!end) return true;                       // 날짜 정보 없으면 최신으로 취급
-  const cutoff = new Date(); cutoff.setHours(0,0,0,0); cutoff.setMonth(cutoff.getMonth()-1);
+  const cutoff = new Date(); cutoff.setHours(0,0,0,0); cutoff.setDate(cutoff.getDate()-14);
   return new Date(end+'T00:00:00') >= cutoff;
 }
 
