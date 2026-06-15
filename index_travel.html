@@ -814,15 +814,42 @@ function toast(msg, dur=2400) {
   _toastTmr=setTimeout(()=>el.classList.remove('show'),dur);
 }
 
+// ─── 앱 내 뒤로가기(iOS 가장자리 스와이프 = 브라우저 back) ───
+// 화면을 깊이 들어갈 때(상세·시트·비홈 탭)마다 history 항목을 쌓고,
+// 뒤로가기(popstate) 시 앱 밖으로 나가지 않고 한 단계만 닫는다.
+const Nav = { stack: [], popping: false };
+function navPush(entry) {
+  Nav.stack.push(entry);
+  history.pushState({ navDepth: Nav.stack.length }, '');
+}
+function navBack() {                          // UI(닫기 버튼·백드롭·스와이프)에서 호출
+  if (Nav.stack.length) history.back();       // → popstate가 실제 닫기를 수행
+}
+function navCloseTop(entry) {                 // popstate가 부른 실제 닫기 (history는 손대지 않음)
+  if (entry.type === 'sheet')       closeSheet(entry.id);
+  else if (entry.type === 'detail') closeDetail();
+  else if (entry.type === 'tab')    showTab('home');
+}
+window.addEventListener('popstate', () => {
+  const entry = Nav.stack.pop();
+  if (!entry) return;                         // 스택이 비면 기본 동작(앱 루트 → 밖)
+  Nav.popping = true;
+  try { navCloseTop(entry); }
+  finally { Nav.popping = false; }
+});
+
 // ─── 시트 공통 (모션 + 스와이프 닫기) ───
 function openSheet(id) {
   const ov = document.getElementById(id);
+  if (ov.classList.contains('show')) return;  // 중복 진입 방지(스택 꼬임 방지)
   ov.classList.remove('closing');
   ov.classList.add('show');
+  navPush({ type: 'sheet', id });
 }
 function closeSheet(id) {
   const ov = document.getElementById(id);
   if (!ov.classList.contains('show') || ov.classList.contains('closing')) return;
+  if (!Nav.popping) { navBack(); return; }    // UI 호출 → history 통해 위임
   ov.classList.add('closing');
   setTimeout(()=>{
     ov.classList.remove('show','closing');
@@ -1468,10 +1495,14 @@ function openDetail(id) {
   renderDetailBody(t);
   document.getElementById('detail-overlay').classList.add('show');
   document.getElementById('bottom-tabs').style.display = 'none';
+  navPush({ type: 'detail' });
 }
 
 function closeDetail() {
-  document.getElementById('detail-overlay').classList.remove('show');
+  const ov = document.getElementById('detail-overlay');
+  if (!ov.classList.contains('show')) return;
+  if (!Nav.popping) { navBack(); return; }   // UI 호출 → history 통해 위임
+  ov.classList.remove('show');
   document.getElementById('bottom-tabs').style.display = '';
   S.detailId = null;
 }
@@ -1947,6 +1978,12 @@ function showTab(tab) {
   const el=document.getElementById('tab-'+tab);
   if(el) el.classList.add('active');
   if(tab==='manage') renderManage();
+  // 뒤로가기: 홈=루트, 비홈 탭은 history 항목 1개만 유지
+  if (!Nav.popping) {
+    const hasTab = Nav.stack.some(e=>e.type==='tab');
+    if (tab!=='home' && !hasTab) navPush({ type:'tab' });
+    else if (tab==='home' && hasTab) navBack();
+  }
 }
 
 // ─── Auth ───
