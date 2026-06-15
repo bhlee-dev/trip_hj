@@ -1402,23 +1402,31 @@ async function applySmartSync() {
   }
 }
 
+// 여행 종료일(없으면 시작일) 기준 한 달이 지나지 않았으면 true — 기본 선택 대상 판단용
+function isTripRecent(t) {
+  const end = t && (t.endDate || t.startDate);
+  if (!end) return true;                       // 날짜 정보 없으면 최신으로 취급
+  const cutoff = new Date(); cutoff.setHours(0,0,0,0); cutoff.setMonth(cutoff.getMonth()-1);
+  return new Date(end+'T00:00:00') >= cutoff;
+}
+
 // ─── 여행 선택 동기화 ───
 function syncTripSelects() {
   const opts = ['<option value="">— 여행을 선택해주세요 —</option>',
     ...sortedTrips().map(t=>`<option value="${esc(t.id)}">${esc(t.title)} (${tripLegs(t).map(l=>esc(l.currency)).join('·')})</option>`)
   ].join('');
-  const latest = sortedTrips()[0];   // 시작일 기준 가장 최근 여행
+  const latest = sortedTrips()[0];                                  // 가장 최근 여행
+  const defaultTrip = (latest && isTripRecent(latest)) ? latest : null;  // 종료 후 한 달 지나면 기본 선택 안 함
   ['ex-trip-sel','sp-trip-sel'].forEach(id=>{
     const el=document.getElementById(id);
     if(!el) return;
     const cur=el.value; el.innerHTML=opts;
     if(cur && S.trips.some(t=>t.id===cur)) { el.value=cur; return; }
-    // 선택값이 없으면 최신 여행을 기본으로 선택
-    if(latest){
-      el.value = latest.id;
-      if(id==='ex-trip-sel') onExTripChange(latest.id);
-      else                   onSpTripChange(latest.id);
-    }
+    // 선택값이 없으면: 최근 여행이면 기본 선택, 아니면 '여행을 선택해주세요' 상태 유지
+    const pick = defaultTrip ? defaultTrip.id : '';
+    el.value = pick;
+    if(id==='ex-trip-sel') onExTripChange(pick);
+    else                   onSpTripChange(pick);
   });
   renderManage();
 }

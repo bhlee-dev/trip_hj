@@ -85,6 +85,7 @@ trip의 모든 지출은 **공동지출**로 취급. 사용자 피드백: "여�
 - **뒤로가기 제스처(3중)**: ① 헤더 '뒤로' 버튼 ② 상세 화면 **왼쪽→오른쪽 스와이프**(`initDetailSwipeBack`: dx>90px·수평 우세 판정 후 closeDetail) ③ iOS 네이티브 엣지 스와이프(History API — `Nav`/navPush/navBack/popstate). 바텀시트는 **backdrop 탭** 또는 **아래로 스와이프**로 닫힘(각 오버레이에 `e.target===overlay` 핸들러 + initSheetGestures). 신규 시트 추가 시 backdrop 탭 핸들러도 함께 등록할 것.
 - **상세 일자별 지출 필터·정렬**: '일자별 지출 내역' 섹션 헤더의 `필터·정렬` 버튼(`#detail-filter-btn`)→`#detail-filter-overlay` 시트. 필터=카테고리(다중 선택), 정렬=최신순(기본)/오래된순/금액↑/금액↓. 상태는 `S.detailFilter={sort,cats}`(결제자 차원 없음 — 공동지출). `openDetail`마다 초기화. 금액 정렬은 날짜 그룹 해제(평면 목록), 날짜 정렬은 날짜 그룹 유지. 적용 시 `renderDetailBody` 재호출. 카테고리별 지출(요약 막대)은 필터 영향 없는 전체 개요.
 - **카테고리 칩은 텍스트만(이모지 없음)**: 기록·수정·필터 시트의 카테고리 칩(`sp-cat-chips`/`ed-cat-chips`/`df-cat-chips`)은 `식비·교통·숙박·관광·기타` 텍스트만. 5개 고정·고빈도 입력이라 드롭다운보다 칩(1탭·전체 보임)이 유리하다는 판단이며, 이모지는 시선 노이즈라 제거. 신규 칩에 이모지 추가 금지. (empty-state 아이콘 같은 장식용 이모지는 별개)
+- **기록·환전 탭 기본 여행 선택**: `syncTripSelects()`가 가장 최근 여행을 기본 선택하되, **종료일(없으면 시작일)이 한 달 넘게 지난 여행이면 기본 선택하지 않고** '— 여행을 선택해주세요 —'(value="") 상태로 둔다(`isTripRecent`). 여행 다녀온 지 오래됐을 때 옛 여행에 실수로 기록하는 것 방지. 사용자가 수동 선택한 값은 유지.
 - stat 숫자는 카운트업(animateValue)
 - 하단 탭 3개: 홈 · 환전 · **기록**(평평한 탭, `data-tab="expense"`). 사용 빈도(지출 기록 하루 여러 번 > 환전 ≤1회/일 > 홈 개요)에 맞춘 구성. **관리는 하단에서 제외** — 우상단 헤더 톱니바퀴(`#header-manage`)→`showTab('manage')`로 진입(여행당 1회 사전 생성용이라 상시 노출 불필요). v3.2에서 강조 FAB(`.tab-btn-primary`) 원복: "디자인적으로 너무 튄다" 피드백.
 - **헤더 버전 라벨은 제목 바로 오른쪽**(`#header-title-wrap` 내부, 제목→`#header-version`→앱스위처 chevron 순). balance_hj(`가계부 v9`)/snowball_hj(`우상향 v1`)와 동일 위치로 통일 — "동일 앱처럼" 느껴지게.
