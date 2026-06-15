@@ -445,11 +445,11 @@ input[type="date"].form-input{font-size:var(--text-body);-webkit-appearance:none
       <div class="form-group">
         <label class="form-label">카테고리</label>
         <div class="chip-row" id="sp-cat-chips">
-          <button class="chip active" data-cat="식비" type="button">🍽 식비</button>
+          <button class="chip active" data-cat="식비" type="button">🍽️ 식비</button>
           <button class="chip" data-cat="교통" type="button">🚌 교통</button>
           <button class="chip" data-cat="숙박" type="button">🏨 숙박</button>
-          <button class="chip" data-cat="관광" type="button">🎡 관광</button>
-          <button class="chip" data-cat="기타" type="button">📦 기타</button>
+          <button class="chip" data-cat="관광" type="button">🗺️ 관광</button>
+          <button class="chip" data-cat="기타" type="button">🧾 기타</button>
         </div>
       </div>
       <div class="form-group">
@@ -585,11 +585,11 @@ input[type="date"].form-input{font-size:var(--text-body);-webkit-appearance:none
         <div class="form-group" id="ed-cat-group" style="display:none">
           <label class="form-label">카테고리</label>
           <div class="chip-row" id="ed-cat-chips">
-            <button class="chip" data-cat="식비" type="button">🍽 식비</button>
+            <button class="chip" data-cat="식비" type="button">🍽️ 식비</button>
             <button class="chip" data-cat="교통" type="button">🚌 교통</button>
             <button class="chip" data-cat="숙박" type="button">🏨 숙박</button>
-            <button class="chip" data-cat="관광" type="button">🎡 관광</button>
-            <button class="chip" data-cat="기타" type="button">📦 기타</button>
+            <button class="chip" data-cat="관광" type="button">🗺️ 관광</button>
+            <button class="chip" data-cat="기타" type="button">🧾 기타</button>
           </div>
         </div>
         <div class="form-group" id="ed-detail-group" style="display:none">
@@ -1367,11 +1367,18 @@ function syncTripSelects() {
   const opts = ['<option value="">— 여행을 선택해주세요 —</option>',
     ...sortedTrips().map(t=>`<option value="${esc(t.id)}">${esc(t.title)} (${tripLegs(t).map(l=>esc(l.currency)).join('·')})</option>`)
   ].join('');
+  const latest = sortedTrips()[0];   // 시작일 기준 가장 최근 여행
   ['ex-trip-sel','sp-trip-sel'].forEach(id=>{
     const el=document.getElementById(id);
     if(!el) return;
     const cur=el.value; el.innerHTML=opts;
-    if(cur && S.trips.some(t=>t.id===cur)) el.value=cur;
+    if(cur && S.trips.some(t=>t.id===cur)) { el.value=cur; return; }
+    // 선택값이 없으면 최신 여행을 기본으로 선택
+    if(latest){
+      el.value = latest.id;
+      if(id==='ex-trip-sel') onExTripChange(latest.id);
+      else                   onSpTripChange(latest.id);
+    }
   });
   renderManage();
 }
