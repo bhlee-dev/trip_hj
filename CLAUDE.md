@@ -63,8 +63,18 @@ balance_hj와 동일 패턴이며 **가계부 내보내기 시 balance 재인증
 
 `submitExport()`: balance-hj 보조 앱 + `inMemoryPersistence` + PIN 재인증 → balance `expenses` 컬렉션에 addDoc.
 - 기록 형식: `{date, item, category:'여행/숙박', user, amount, memo, createdAt(ISO 문자열)}` — **balance 스키마를 따를 것** (balance_hj/CLAUDE.md 참고)
-- user는 `'희'`/`'정'`만 사용 (`'희정'`은 balance 고정비 전용)
+- user는 `'희'`/`'정'`만 사용 (`'희정'`은 balance 고정비 전용). 로그인한 사람(`S.currentUserName`)으로 귀속 — balance 스키마가 user를 요구하므로 trip이 공동지출이어도 이 한 줄 기록엔 희/정이 들어감(아래 "공동지출 정책" 참고).
 - 내보내기 후 trip 문서에 `exportedAt`/`exportedAmount` 기록 — 중복 내보내기 시 버튼 라벨로 안내
+
+---
+
+## 공동지출 정책 — trip은 희/정 구분을 UI에 노출하지 않음
+
+trip의 모든 지출은 **공동지출**로 취급. 사용자 피드백: "여행 앱에서는 모든게 공동 지출이야."
+- **UI에서 결제자(희/정) 구분 없음**: 상세 필터 시트에 결제자 칩을 두지 않으며, 목록·상세 어디에도 payer를 표시하지 않는다. 신규 UI에 희/정 선택지를 추가하지 말 것.
+- **데이터 구조는 그대로 유지(안전)**: 기록의 `payer` 필드(=로그인 사용자)는 계속 저장되고 GAS 백업/시트 컬럼·smartSync 비교에도 남는다. 화면에 안 보이는 메타데이터일 뿐이며, 제거하면 시트 동기화 churn·GAS 재배포가 필요하므로 건드리지 않는다.
+- **로그인/인증은 희·정 계정 유지**: `hj@ledger.com`/`jeong@ledger.com` 2계정과 `S.currentUserName`은 인증·내보내기 귀속에 필요 — 제거 금지.
+- **형제 앱은 희/정 유지**: balance(개인별 가계부)·snowball(자산 소유자)은 희/정 구분이 핵심이므로 그대로 둔다. 공동지출 정책은 **trip에만** 적용.
 
 ---
 
@@ -72,6 +82,8 @@ balance_hj와 동일 패턴이며 **가계부 내보내기 시 balance 재인증
 
 - **항상 다크모드**, CSS 변수 기반 타이포그래피 (balance 디자인 시스템 계승)
 - 입력·수정·삭제는 모두 **바텀시트** (openSheet/closeSheet + 스와이프 닫기 initSheetGestures)
+- **뒤로가기 제스처(3중)**: ① 헤더 '뒤로' 버튼 ② 상세 화면 **왼쪽→오른쪽 스와이프**(`initDetailSwipeBack`: dx>90px·수평 우세 판정 후 closeDetail) ③ iOS 네이티브 엣지 스와이프(History API — `Nav`/navPush/navBack/popstate). 바텀시트는 **backdrop 탭** 또는 **아래로 스와이프**로 닫힘(각 오버레이에 `e.target===overlay` 핸들러 + initSheetGestures). 신규 시트 추가 시 backdrop 탭 핸들러도 함께 등록할 것.
+- **상세 일자별 지출 필터·정렬**: '일자별 지출 내역' 섹션 헤더의 `필터·정렬` 버튼(`#detail-filter-btn`)→`#detail-filter-overlay` 시트. 필터=카테고리(다중 선택), 정렬=최신순(기본)/오래된순/금액↑/금액↓. 상태는 `S.detailFilter={sort,cats}`(결제자 차원 없음 — 공동지출). `openDetail`마다 초기화. 금액 정렬은 날짜 그룹 해제(평면 목록), 날짜 정렬은 날짜 그룹 유지. 적용 시 `renderDetailBody` 재호출. 카테고리별 지출(요약 막대)은 필터 영향 없는 전체 개요.
 - stat 숫자는 카운트업(animateValue)
 - 하단 탭 3개: 홈 · 환전 · **기록**(평평한 탭, `data-tab="expense"`). 사용 빈도(지출 기록 하루 여러 번 > 환전 ≤1회/일 > 홈 개요)에 맞춘 구성. **관리는 하단에서 제외** — 우상단 헤더 톱니바퀴(`#header-manage`)→`showTab('manage')`로 진입(여행당 1회 사전 생성용이라 상시 노출 불필요). v3.2에서 강조 FAB(`.tab-btn-primary`) 원복: "디자인적으로 너무 튄다" 피드백.
 - **헤더 버전 라벨은 제목 바로 오른쪽**(`#header-title-wrap` 내부, 제목→`#header-version`→앱스위처 chevron 순). balance_hj(`가계부 v9`)/snowball_hj(`우상향 v1`)와 동일 위치로 통일 — "동일 앱처럼" 느껴지게.
