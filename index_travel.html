@@ -319,7 +319,6 @@ input[type="date"].form-input{font-size:var(--text-body);-webkit-appearance:none
 .sheet-overlay.show .sheet-box{animation:sheetIn .32s cubic-bezier(.32,.72,0,1)}
 .sheet-overlay.closing{animation:ovOut .2s ease forwards}
 .sheet-overlay.closing .sheet-box{animation:sheetOut .2s ease forwards}
-#del-overlay{z-index:360}  /* 삭제 확인은 다른 시트(수정 등) 위에 겹쳐 떠야 함 */
 @keyframes ovIn{from{background:rgba(0,0,0,0)}to{background:rgba(0,0,0,.6)}}
 @keyframes ovOut{to{background:rgba(0,0,0,0)}}
 @keyframes sheetIn{from{transform:translateY(100%)}to{transform:translateY(0)}}
@@ -880,9 +879,15 @@ window.addEventListener('popstate', () => {
 });
 
 // ─── 시트 공통 (모션 + 스와이프 닫기) ───
+// 안전 패턴: 시트를 열 때마다 현재 열린 시트보다 항상 위 z-index를 부여한다.
+// DOM 순서에 의존하지 않으므로, 다른 시트 위에 겹쳐 떠도(예: 수정 시트에서 사진 삭제 확인)
+// 새로 연 시트가 절대 뒤에 가려지지 않는다. (.sheet-overlay 기본 z-index 350)
+const SHEET_Z_BASE = 350;
 function openSheet(id) {
   const ov = document.getElementById(id);
   if (ov.classList.contains('show')) return;  // 중복 진입 방지(스택 꼬임 방지)
+  const openCount = document.querySelectorAll('.sheet-overlay.show').length;
+  ov.style.zIndex = SHEET_Z_BASE + openCount;
   ov.classList.remove('closing');
   ov.classList.add('show');
   navPush({ type: 'sheet', id });
@@ -894,6 +899,7 @@ function closeSheet(id) {
   ov.classList.add('closing');
   setTimeout(()=>{
     ov.classList.remove('show','closing');
+    ov.style.zIndex = '';                      // 동적 z-index 초기화(다음 열림 때 재계산)
     const box = ov.querySelector('.sheet-box');
     if (box) box.style.transform='';
   }, 200);
