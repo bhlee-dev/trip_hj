@@ -82,6 +82,11 @@ trip의 모든 지출은 **공동지출**로 취급. 사용자 피드백: "여�
 
 - **항상 다크모드**, CSS 변수 기반 타이포그래피 (balance 디자인 시스템 계승)
 - 입력·수정·삭제는 모두 **바텀시트** (openSheet/closeSheet + 스와이프 닫기 initSheetGestures)
+- **시트 z-index 동적 스태킹** (시트가 다른 시트 위에 겹쳐 떠도 안 가려지게):
+  - `openSheet`가 열 때마다 `z-index = SHEET_Z_BASE(350) + 현재 열린 .sheet-overlay.show 개수`를 인라인으로 부여 → 새로 연 시트가 **항상 기존 시트 위**. `closeSheet`는 닫을 때 인라인 z-index를 초기화(다음 열림 때 재계산).
+  - **왜**: 모든 `.sheet-overlay`가 CSS상 z-index 350으로 동일해, 겹치면 DOM 순서가 늦은 쪽이 위로 그려진다. 과거 사진 삭제 확인(`del-overlay`, DOM 앞)이 수정 시트(`edit-overlay`, DOM 뒤) 뒤에 가려져 "사진 눌러도 삭제 안 됨" 버그 발생. CSS 정적 z-index(예: `#del-overlay{z-index:360}`)는 임시방편 — 새 중첩 조합마다 또 깨지므로 **쓰지 말 것**. 동적 스태킹이 근본 해결책.
+  - **close-before-open(balance/snowball 방식)을 쓰지 않는 이유**: trip엔 *수정 시트에서 사진 삭제 확인을 띄우고 → 삭제 후 수정 화면으로 복귀*하는 흐름이 있어, 여는 순간 기존 시트를 닫으면 편집 컨텍스트가 사라진다. 동적 z-index는 그 중첩 흐름을 보존하면서 가려짐만 제거한다.
+  - **불변식**: 신규 시트는 반드시 `openSheet`/`closeSheet`를 거칠 것(직접 `classList.add('show')` 금지 — z-index 미부여로 가려짐). toast(z500)·pin(z9999)은 시트보다 위라 영향 없음(실사용 중첩은 최대 2단=350·351).
 - **뒤로가기 제스처(3중)**: ① 헤더 '뒤로' 버튼 ② 상세 화면 **왼쪽→오른쪽 스와이프**(`initDetailSwipeBack`: dx>90px·수평 우세 판정 후 closeDetail) ③ iOS 네이티브 엣지 스와이프(History API — `Nav`/navPush/navBack/popstate). 바텀시트는 **backdrop 탭** 또는 **아래로 스와이프**로 닫힘(각 오버레이에 `e.target===overlay` 핸들러 + initSheetGestures). 신규 시트 추가 시 backdrop 탭 핸들러도 함께 등록할 것.
 - **상세 일자별 지출 필터·정렬**: '일자별 지출 내역' 섹션 헤더의 `필터·정렬` 버튼(`#detail-filter-btn`)→`#detail-filter-overlay` 시트. 필터=카테고리(다중 선택), 정렬=최신순(기본)/오래된순/금액↑/금액↓. 상태는 `S.detailFilter={sort,cats}`(결제자 차원 없음 — 공동지출). `openDetail`마다 초기화. 금액 정렬은 날짜 그룹 해제(평면 목록), 날짜 정렬은 날짜 그룹 유지. 적용 시 `renderDetailBody` 재호출. 카테고리별 지출(요약 막대)은 필터 영향 없는 전체 개요.
 - **카테고리 칩은 텍스트만(이모지 없음)**: 기록·수정·필터 시트의 카테고리 칩(`sp-cat-chips`/`ed-cat-chips`/`df-cat-chips`)은 `식비·교통·숙박·관광·기타` 텍스트만. 5개 고정·고빈도 입력이라 드롭다운보다 칩(1탭·전체 보임)이 유리하다는 판단이며, 이모지는 시선 노이즈라 제거. 신규 칩에 이모지 추가 금지. (empty-state 아이콘 같은 장식용 이모지는 별개)
