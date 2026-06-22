@@ -364,7 +364,7 @@ input[type="date"].form-input{font-size:var(--text-body);-webkit-appearance:none
   <header id="app-header">
     <div id="header-title-wrap">
       <span id="header-title">여행</span>
-      <span id="header-version">v3.3</span>
+      <span id="header-version">v3.3.1</span>
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-muted)"><polyline points="6 9 12 15 18 9"/></svg>
     </div>
     <button id="header-manage" type="button" aria-label="관리">
@@ -1070,7 +1070,7 @@ async function removeTrip(id) {
 
 async function addExchange(data) {
   const ref = await addDoc(collection(db,'trip_exchanges'), {...data, createdAt:serverTimestamp()});
-  const item = {id:ref.id,...data};
+  const item = {id:ref.id,...data, createdAt:new Date()};
   S.exchanges.push(item);
   const t = tripById(data.tripId);
   gasBackup('addExchange', {tripTitle:t?.title||'', currency:data.currency||'', date:data.date, amountLocal:data.amountLocal, amountKRW:data.amountKRW, payer:data.payer, docId:ref.id});
@@ -1084,7 +1084,7 @@ async function removeExchange(id) {
 
 async function addExpense(data) {
   const ref = await addDoc(collection(db,'trip_expenses'), {...data, createdAt:serverTimestamp()});
-  const item = {id:ref.id,...data};
+  const item = {id:ref.id,...data, createdAt:new Date()};
   S.expenses.push(item);
   const t = tripById(data.tripId);
   gasBackup('addTripExpense', {tripTitle:t?.title||'', currency:data.currency||'', date:data.date, category:data.category, detail:data.detail, amountLocal:data.amountLocal, amountKRW:data.amountKRW, payer:data.payer, docId:ref.id});
@@ -1578,7 +1578,10 @@ function renderDetailBody(trip) {
   const dur = tripDuration(trip);
   const nSecs = legs.length + (hasKrw?1:0);
   const multi = nSecs>1;             // 섹션 머리글 표시 여부
-  const exps = tripExps(trip.id).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  const exps = tripExps(trip.id).slice().sort((a,b)=>{
+    const d = (b.date||'').localeCompare(a.date||'');
+    return d !== 0 ? d : tsMs(b.createdAt) - tsMs(a.createdAt);
+  });
 
   // 해외 구간별 섹션 (순수 현지 지출 + 환전 + 가중평균환율)
   let legSecs = legs.map(lg=>{
@@ -1630,10 +1633,30 @@ function renderDetailBody(trip) {
     return true;
   });
   switch (flt.sort) {
-    case 'date_asc':  fexps.sort((a,b)=>(a.date||'').localeCompare(b.date||'')); break;
-    case 'amt_desc':  fexps.sort((a,b)=>(b.amountKRW||0)-(a.amountKRW||0)); break;
-    case 'amt_asc':   fexps.sort((a,b)=>(a.amountKRW||0)-(b.amountKRW||0)); break;
-    default:          fexps.sort((a,b)=>(b.date||'').localeCompare(a.date||'')); // date_desc
+    case 'date_asc':  
+      fexps.sort((a,b)=>{
+        const d = (a.date||'').localeCompare(b.date||'');
+        return d !== 0 ? d : tsMs(a.createdAt) - tsMs(b.createdAt);
+      }); 
+      break;
+    case 'amt_desc':  
+      fexps.sort((a,b)=>{
+        const d = (b.amountKRW||0)-(a.amountKRW||0);
+        return d !== 0 ? d : tsMs(b.createdAt) - tsMs(a.createdAt);
+      }); 
+      break;
+    case 'amt_asc':   
+      fexps.sort((a,b)=>{
+        const d = (a.amountKRW||0)-(b.amountKRW||0);
+        return d !== 0 ? d : tsMs(b.createdAt) - tsMs(a.createdAt);
+      }); 
+      break;
+    default:          
+      fexps.sort((a,b)=>{
+        const d = (b.date||'').localeCompare(a.date||'');
+        return d !== 0 ? d : tsMs(b.createdAt) - tsMs(a.createdAt);
+      }); 
+      break; // date_desc
   }
   const rowHtml = e => {
     const cls = `cpill cpill-${esc(e.category||'기타')}`;
@@ -1805,7 +1828,10 @@ async function submitExport() {
 function renderExList(tripId) {
   const el  = document.getElementById('ex-list');
   const cur = S.exCur||'';
-  const exs = (tripId&&cur) ? legExs(tripId, cur).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')) : [];
+  const exs = (tripId&&cur) ? legExs(tripId, cur).slice().sort((a,b)=>{
+    const d = (b.date||'').localeCompare(a.date||'');
+    return d !== 0 ? d : tsMs(b.createdAt) - tsMs(a.createdAt);
+  }) : [];
   if (!tripId||!cur||exs.length===0) {
     el.innerHTML=`<div class="empty-sm"><span class="empty-icon">💱</span><span class="empty-sub">${tripId?'환전 내역이 없습니다':'여행을 선택하면 환전 내역이 표시됩니다'}</span></div>`;
     return;
@@ -1836,7 +1862,10 @@ function renderSpList(tripId) {
   const el  = document.getElementById('sp-list');
   const cur = S.spCur||'';
   const t   = tripById(tripId);
-  const exps = (tripId&&cur) ? legExps(tripId, cur).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')) : [];
+  const exps = (tripId&&cur) ? legExps(tripId, cur).slice().sort((a,b)=>{
+    const d = (b.date||'').localeCompare(a.date||'');
+    return d !== 0 ? d : tsMs(b.createdAt) - tsMs(a.createdAt);
+  }) : [];
   if (!tripId||!cur||exps.length===0) {
     el.innerHTML=`<div class="empty-sm"><span class="empty-icon">🧾</span><span class="empty-sub">${tripId?'지출 내역이 없습니다':'여행을 선택하면 지출 내역이 표시됩니다'}</span></div>`;
     return;
@@ -1959,15 +1988,15 @@ function openEdit(kind, id) {
   } else if (kind==='expense') {
     const ex=S.expenses.find(e=>e.id===id); if(!ex) return;
     const cur=recCur(ex, tripById(ex.tripId))||'—';
-    const isk=isKrwPaid(ex, tripById(ex.tripId));
+    const isk=isKRWcur(cur);
     document.getElementById('edit-title').textContent='지출 내역 수정';
     show('ed-date-group',true); show('ed-cat-group',true); show('ed-detail-group',true);
     show('ed-local-group',true); show('ed-krw-group',false); show('ed-title-group',false); show('ed-dates-group',false); show('ed-legs-group',false); show('ed-photos-group',false);
-    document.getElementById('ed-local-lbl').textContent=isk?'금액 (원화 결제)':`금액 (${cur})`;
+    document.getElementById('ed-local-lbl').textContent=isk?'금액 (원화 직접결제)':`금액 (${cur})`;
     document.getElementById('ed-cur-sfx').textContent=isk?'원':cur;
     document.getElementById('ed-date').value=ex.date||'';
     document.getElementById('ed-detail').value=ex.detail||'';
-    document.getElementById('ed-local').value=(isk?ex.amountKRW:ex.amountLocal)??'';
+    document.getElementById('ed-local').value=ex.amountLocal??'';
     setEdCat(ex.category||'기타');
   } else if (kind==='trip') {
     const t=tripById(id); if(!t) return;
@@ -2014,8 +2043,18 @@ async function submitEdit() {
       const t=tripById(ex?.tripId||'');
       const c=recCur(ex,t);
       let krw, amountLocal;
-      if(isKrwPaid(ex,t)){ krw=Math.round(local); amountLocal=isKRWcur(c)?krw:0; }
-      else { const rate=legAvgRate(ex?.tripId||'', c); krw=rate>0?Math.round(local*rate):(ex?.amountKRW||0); amountLocal=local; }
+      if (isKRWcur(c)) { 
+        krw = Math.round(local); 
+        amountLocal = krw; 
+      } else { 
+        if (local === ex.amountLocal) {
+          krw = ex.amountKRW || 0;
+        } else {
+          const historicalRate = (ex.amountLocal > 0) ? (ex.amountKRW / ex.amountLocal) : legAvgRate(ex?.tripId||'', c);
+          krw = historicalRate > 0 ? Math.round(local * historicalRate) : (ex.amountKRW || 0);
+        }
+        amountLocal = local;
+      }
       btn.disabled=true; btn.textContent='저장 중...';
       await updateExpense(id,{date, category:edCat, detail, amountLocal, amountKRW:krw});
       renderSpList(S.spTripId);
