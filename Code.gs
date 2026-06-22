@@ -117,9 +117,12 @@ function doGet(e) {
 // ────────────────────────────────────────────────
 
 function addExchange(data) {
-  const sheet = getOrCreateSheet(RAW_TRAVEL);
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    const sheet = getOrCreateSheet(RAW_TRAVEL);
 
-  const date        = sanitize(data.date || '', 10);
+    const date        = sanitize(data.date || '', 10);
   const tripTitle   = sanitize(data.tripTitle || '', 40);
   const currency    = sanitize(data.currency || '', 10);
   const amountLocal = parseFloat(data.amountLocal) || 0;
@@ -133,7 +136,10 @@ function addExchange(data) {
     new Date().toISOString(), docId, currency
   ]);
 
-  return { success: true };
+    return { success: true };
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 // ────────────────────────────────────────────────
@@ -142,9 +148,12 @@ function addExchange(data) {
 // ────────────────────────────────────────────────
 
 function addTripExpense(data) {
-  const sheet = getOrCreateSheet(RAW_TRAVEL);
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    const sheet = getOrCreateSheet(RAW_TRAVEL);
 
-  const date        = sanitize(data.date     || '', 10);
+    const date        = sanitize(data.date     || '', 10);
   const tripTitle   = sanitize(data.tripTitle|| '', 40);
   const currency    = sanitize(data.currency || '', 10);
   const category    = sanitize(data.category || '', 10);
@@ -160,7 +169,10 @@ function addTripExpense(data) {
     new Date().toISOString(), docId, currency
   ]);
 
-  return { success: true };
+    return { success: true };
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 // ────────────────────────────────────────────────
@@ -209,6 +221,8 @@ function getAllTravelRows() {
 // ────────────────────────────────────────────────
 
 function smartSyncTravel(payload) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
   try {
     const sheet = getOrCreateSheet(RAW_TRAVEL);
     const toAdd = payload.toAdd || [];
@@ -218,12 +232,17 @@ function smartSyncTravel(payload) {
 
     // docId(J=10열) → 행 번호 맵 + docId 없는 행(구버전 잔재) 수집
     const idMap = {};
+    const duplicateRows = [];
     const orphanRows = [];
     const lastRow = sheet.getLastRow();
     if (lastRow >= 2) {
       const ids = sheet.getRange(2, 10, lastRow - 1, 1).getValues();
       for (let i = 0; i < ids.length; i++) {
-        if (ids[i][0]) idMap[String(ids[i][0])] = i + 2;
+        const docId = String(ids[i][0]);
+        if (docId) {
+          if (idMap[docId]) duplicateRows.push(i + 2);
+          else idMap[docId] = i + 2;
+        }
         else orphanRows.push(i + 2);
       }
     }
@@ -253,6 +272,8 @@ function smartSyncTravel(payload) {
       .map(function(t) { return idMap[String(t.docId)]; })
       .filter(function(r) { return r; });
     if (payload.deleteOrphans) delRows = delRows.concat(orphanRows);
+    delRows = delRows.concat(duplicateRows);
+    delRows = delRows.filter(function(item, pos) { return delRows.indexOf(item) === pos; });
     delRows.sort(function(a, b) { return b - a; });
     delRows.forEach(function(r) { sheet.deleteRow(r); deleted++; });
 
@@ -278,5 +299,7 @@ function smartSyncTravel(payload) {
     return { success: true, added: added, updated: updated, deleted: deleted };
   } catch (e) {
     return { success: false, error: e.message };
+  } finally {
+    lock.releaseLock();
   }
 }
