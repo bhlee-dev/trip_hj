@@ -365,7 +365,7 @@ input[type="date"].form-input{font-size:var(--text-body);-webkit-appearance:none
   <header id="app-header">
     <div id="header-title-wrap">
       <span id="header-title">여행</span>
-      <span id="header-version">v3.2</span>
+      <span id="header-version">v3.3</span>
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-muted)"><polyline points="6 9 12 15 18 9"/></svg>
     </div>
     <button id="header-manage" type="button" aria-label="관리">
@@ -521,7 +521,7 @@ input[type="date"].form-input{font-size:var(--text-body);-webkit-appearance:none
       <div class="section-header" style="margin-top:18px">앱 정보</div>
       <div class="manage-card" style="padding:16px;display:flex;justify-content:space-between;align-items:center">
         <span style="font-size:var(--text-body);color:var(--text)">버전 정보</span>
-        <span style="font-size:var(--text-caption);color:var(--text-sub)">v3.2</span>
+        <span style="font-size:var(--text-caption);color:var(--text-sub)">v3.3</span>
       </div>
     </div>
 
@@ -769,7 +769,7 @@ input[type="date"].form-input{font-size:var(--text-body);-webkit-appearance:none
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import {
   initializeFirestore, persistentLocalCache, persistentSingleTabManager,
-  collection, doc, addDoc, getDoc, getDocs, deleteDoc, updateDoc, writeBatch, getFirestore,
+  collection, doc, addDoc, getDoc, getDocFromCache, getDocs, deleteDoc, updateDoc, writeBatch, getFirestore,
   query, orderBy, serverTimestamp, arrayUnion, arrayRemove
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import {
@@ -1158,16 +1158,21 @@ function fileToCompressedDataUrl(file, maxDim=1280, quality=0.5) {
   });
 }
 
+// 사진 문서는 생성·삭제만 있고 수정이 없다(불변) → IndexedDB 캐시를 먼저 읽어도 절대 낡지 않는다.
+// 캐시 우선이라 사진은 기기당 평생 1회만 내려받는다. getDoc 단독으로 되돌리면 매번 ~0.7MB 재다운로드.
 async function fetchPhoto(photoId) {
   if (S.photoCache[photoId]) return S.photoCache[photoId];
-  try {
-    const snap = await getDoc(doc(db,'trip_photos',photoId));
-    if (!snap.exists()) return null;
-    const d = snap.data().dataUrl;
-    if (!isValidPhotoDataUrl(d)) return null;
-    S.photoCache[photoId] = d;
-    return d;
-  } catch(e) { return null; }
+  const ref = doc(db,'trip_photos',photoId);
+  let snap = null;
+  try { snap = await getDocFromCache(ref); } catch(e) { /* 캐시 미스 → 서버 조회 */ }
+  if (!snap || !snap.exists()) {
+    try { snap = await getDoc(ref); } catch(e) { return null; }
+  }
+  if (!snap.exists()) return null;
+  const d = snap.data().dataUrl;
+  if (!isValidPhotoDataUrl(d)) return null;
+  S.photoCache[photoId] = d;
+  return d;
 }
 
 async function addTripPhoto(tripId, dataUrl) {
@@ -1229,20 +1234,39 @@ function renderEditPhotos(tripId) {
   }));
 }
 
-// 카드(홈)에 여행 사진을 랜덤 배경으로 적용 (카드당 1장만 지연 로딩)
+// 문자열 → 0..n-1 인덱스 (FNV-1a + 눈사태 마무리). 같은 입력이면 항상 같은 결과.
+// 마무리 단계 필수: FNV는 하위 비트 확산이 약한데 % n이 바로 그 비트를 쓴다.
+// 없으면 날짜가 하루 다를 뿐인 키들이 뭉쳐, 사진이 주기적으로 순환하고 여러 카드가 같이 움직인다.
+const seedIdx = (key, n) => {
+  let h = 2166136261;
+  for (let i=0;i<key.length;i++) { h ^= key.charCodeAt(i); h = Math.imul(h, 16777619); }
+  h ^= h>>>15; h = Math.imul(h, 2246822507);
+  h ^= h>>>13; h = Math.imul(h, 3266489909);
+  h ^= h>>>16;
+  return (h>>>0) % n;
+};
+
+// 카드(홈)에 여행 사진을 배경으로 적용 (카드당 1장만 지연 로딩).
+// 랜덤이 아니라 '여행ID + 오늘 날짜' 시드의 결정론적 선택 — 하루 동안은 같은 사진, 자정이 지나면 바뀐다.
+// renderHome()이 모든 저장·삭제 뒤에 불리므로, Math.random()으로 되돌리면 지출 한 건 저장할 때마다
+// 모든 카드 사진이 다시 뽑히는 문제가 재발한다.
 function applyCardBackgrounds(listEl) {
+  const day = todayStr();
   S.trips.forEach(t=>{
     const ids = t.photoIds || [];
     if (!ids.length) return;
-    const pid = ids[Math.floor(Math.random()*ids.length)];
+    const pid = ids[seedIdx(`${t.id}|${day}`, ids.length)];
     const card = listEl.querySelector(`.trip-card[data-id="${t.id}"]`);
     if (!card) return;
-    fetchPhoto(pid).then(url=>{
-      if (url && card.isConnected) {
-        card.style.setProperty('--card-bg', `url("${url}")`);
-        card.classList.add('has-photo');
-      }
-    });
+    const paint = url => {
+      card.style.setProperty('--card-bg', `url("${url}")`);
+      card.classList.add('has-photo');
+    };
+    // 메모리 캐시에 있으면 동기로 칠한다 — renderHome()이 innerHTML을 갈아끼우므로
+    // 프라미스를 거치면 재렌더마다 배경이 한 프레임 사라졌다 돌아온다.
+    const cached = S.photoCache[pid];
+    if (cached) { paint(cached); return; }
+    fetchPhoto(pid).then(url=>{ if (url && card.isConnected) paint(url); });
   });
 }
 

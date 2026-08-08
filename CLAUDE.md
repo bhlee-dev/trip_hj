@@ -40,6 +40,13 @@ balance_hj와 동일 패턴이며 **가계부 내보내기 시 balance 재인증
 ### 가중평균환율 로직 (구간별)
 지출의 원화 환산은 `구간(통화)별 Σ amountKRW ÷ Σ amountLocal` (`legAvgRate`). **해당 통화 환전 0건이면 그 통화 지출 저장을 차단**하는 가드가 있음 (sp-save) — 제거하면 KRW=0이 영구 기록되는 버그 재발. 단 **KRW 구간은 rate=1**이라 환전 가드 없이 직접 저장.
 
+### 카드 배경 사진 — 날짜 시드 + 캐시 우선 (v3.3)
+비용 0원 유지가 전제. 외부 사진 API 없음 — 사용자가 올린 사진을 리사이즈해 base64로 `trip_photos`에 저장(1280px/q0.5, 950KB 초과 거부). 비용 축은 **Firestore 무료 월 10GiB 다운로드** 하나뿐.
+- **`applyCardBackgrounds`는 랜덤이 아니다**: `seedIdx('여행ID|오늘날짜')`로 고르는 결정론적 선택 — 하루 동안 같은 사진, 자정이 지나면 바뀜. `Math.random()`으로 되돌리지 말 것: `renderHome()`이 모든 저장·삭제 뒤에 불리므로(지출/환전 저장, 삭제 4곳, 여행 추가, 사진 업로드) 지출 한 건 저장할 때마다 전 카드 사진이 다시 뽑히는 버그가 재발한다. 상세에서 뒤로 스와이프 시 바뀌어 보이던 것도 같은 원인(`closeDetail`은 `renderHome`을 부르지 않음).
+- **`fetchPhoto`는 캐시 우선**: `S.photoCache`(메모리) → `getDocFromCache`(IndexedDB) → `getDoc`(서버) 순. 사진 문서는 생성·삭제만 있고 **수정이 없어(불변)** 캐시가 낡을 수 없다. `getDoc` 단독으로 되돌리면 매 조회마다 ~0.7MB를 다시 받는다. `initializeFirestore`의 `persistentLocalCache` 설정이 이 동작의 전제 — 제거 금지.
+- 메모리 캐시 적중 시 **동기로** 배경을 칠한다(프라미스 경유 시 `renderHome`의 `innerHTML` 교체와 겹쳐 한 프레임 깜빡임).
+- 앱은 localStorage를 전혀 쓰지 않음 — 날짜 시드 방식이라 불필요.
+
 ### firebaseConfig / BALANCE_CONFIG
 클라이언트 노출은 Firebase 표준 — 삭제·변경 금지. `BALANCE_CONFIG`는 가계부 내보내기용 balance-hj 프로젝트 설정이며, 보조 앱은 `window._balApp`으로 메모이즈(`initializeApp(BALANCE_CONFIG,'balance')`) — 중복 초기화 시 duplicate-app 에러.
 
