@@ -2388,8 +2388,14 @@ if ('serviceWorker' in navigator) {
 }
 
 // 오프라인
-window.addEventListener('online', ()=>document.getElementById('offline-bar').classList.remove('show'));
-window.addEventListener('offline',()=>document.getElementById('offline-bar').classList.add('show'));
+// 초기 상태도 반영해야 한다 — 이미 오프라인인 채로 앱을 열면
+// online/offline 전환이 없어 배너가 영영 안 떴다 (balance와 동작 통일)
+function syncOfflineBar() {
+  document.getElementById('offline-bar').classList.toggle('show', !navigator.onLine);
+}
+window.addEventListener('online',  syncOfflineBar);
+window.addEventListener('offline', syncOfflineBar);
+syncOfflineBar();
 
 // Firebase Auth 상태
 onAuthStateChanged(auth, user=>{
