@@ -8,10 +8,15 @@
       "firebase.json",
       ".firebaserc",
       ".clasp.json",
+      ".claspignore",
       "firestore.rules",
       "appsscript.json",
       "Code.gs",
+      "*.md",
       ".git/**",
+      ".github/**",
+      ".claude/**",
+      ".agents/**",
       "node_modules/**"
     ],
     "rewrites": [
