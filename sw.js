@@ -1,4 +1,4 @@
-const CACHE = 'trip-v3.3.0';
+const CACHE = 'trip-v3.4.0';
 
 self.addEventListener('install', e => {
   e.waitUntil(

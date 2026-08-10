@@ -47,6 +47,12 @@ balance_hj와 동일 패턴이며 **가계부 내보내기 시 balance 재인증
 - 메모리 캐시 적중 시 **동기로** 배경을 칠한다(프라미스 경유 시 `renderHome`의 `innerHTML` 교체와 겹쳐 한 프레임 깜빡임).
 - 앱은 localStorage를 전혀 쓰지 않음 — 날짜 시드 방식이라 불필요.
 
+**v3.4 — 상세에서 돌아올 때 카드가 깜빡이던 문제는 재렌더가 아니라 리페인트였다.** 브라우저 실측으로 확정: 상세를 여닫는 동안 `home-list`의 MutationObserver는 **0건**(`closeDetail`은 `renderHome`을 부르지 않고 `onSnapshot`도 없다). JS는 아무것도 안 하는데 브라우저가 레이아웃을 무효화 → 리페인트 → 사진을 다시 디코드해서 생긴 현상. 두 불변식:
+- **`openDetail`/`closeDetail`에서 `#bottom-tabs`의 `display`를 토글하지 말 것**: `#detail-overlay`(z200·fixed·불투명)가 탭바(z100)를 이미 덮으므로 숨길 필요가 없다(실측 확인). 토글하면 `#app`/문서 높이가 64px 흔들려(**1722→1658→1722**) 여닫을 때마다 레이아웃 무효화 + 탭바 `backdrop-filter` 재합성이 일어난다. 전환 중 탭바 노출이 거슬리면 `display`가 아니라 `visibility:hidden`(레이아웃 불변)을 쓸 것.
+- **카드 배경엔 원본이 아니라 축소본(`makeCardThumb`/`S.thumbCache`)을 쓸 것**: 저장본 1280×849를 그대로 배경에 쓰면 카드가 실제로 쓰는 픽셀의 3~6배를 디코드한다(**실측: 장당 4.1MB · 사진 9장이면 36.9MB, 디코드 55ms**). 그 양은 홈이 가려진 동안 브라우저 캐시에서 밀려나고, 다시 드러날 때 재디코드되며 깜빡인다. 폭 1080·3:1(≈1.55MB)로 줄여 원인을 없앤다 — 폭 1080은 폰(앱 폭 최대 600 CSS px × DPR 3) 기준 필요 최대치이고, `cover`가 어차피 같은 크롭을 하므로 **보이는 결과는 동일**. Firestore 저장본·수정 시트 썸네일은 건드리지 않으므로 비용도 그대로 0원.
+  - `upgradeToThumb`은 축소본을 `decode()`로 미리 디코드한 뒤에 교체한다. 이 `await`을 빼면 교체하는 순간 배경이 한 프레임 비어 고치려던 깜빡임을 되레 만든다.
+  - 살아있는 `Image` 참조로 디코드를 붙잡는 방식(`pinDecoded`)은 **쓰지 않는다** — Blink의 디코드 캐시는 페인트에 묶여 있어 DOM 밖 Image로는 보장되지 않고, 성공해도 36.9MB를 계속 붙잡는다.
+
 ### firebaseConfig / BALANCE_CONFIG
 클라이언트 노출은 Firebase 표준 — 삭제·변경 금지. `BALANCE_CONFIG`는 가계부 내보내기용 balance-hj 프로젝트 설정이며, 보조 앱은 `window._balApp`으로 메모이즈(`initializeApp(BALANCE_CONFIG,'balance')`) — 중복 초기화 시 duplicate-app 에러.
 

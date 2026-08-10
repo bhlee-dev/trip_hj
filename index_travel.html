@@ -365,7 +365,7 @@ input[type="date"].form-input{font-size:var(--text-body);-webkit-appearance:none
   <header id="app-header">
     <div id="header-title-wrap">
       <span id="header-title">여행</span>
-      <span id="header-version">v3.3</span>
+      <span id="header-version">v3.4</span>
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-muted)"><polyline points="6 9 12 15 18 9"/></svg>
     </div>
     <button id="header-manage" type="button" aria-label="관리">
@@ -521,7 +521,7 @@ input[type="date"].form-input{font-size:var(--text-body);-webkit-appearance:none
       <div class="section-header" style="margin-top:18px">앱 정보</div>
       <div class="manage-card" style="padding:16px;display:flex;justify-content:space-between;align-items:center">
         <span style="font-size:var(--text-body);color:var(--text)">버전 정보</span>
-        <span style="font-size:var(--text-caption);color:var(--text-sub)">v3.3</span>
+        <span style="font-size:var(--text-caption);color:var(--text-sub)">v3.4</span>
       </div>
     </div>
 
@@ -841,7 +841,9 @@ const S = {
   edit:            null,   // { kind, id }
   exportTripId:    null,
   currentUserName: '',
-  photoCache:      {},   // photoId → dataUrl (메모리 캐시)
+  photoCache:      {},   // photoId → dataUrl 원본 (메모리 캐시)
+  thumbCache:      {},   // photoId → 카드용 축소 dataUrl (makeCardThumb 참고)
+  thumbPending:    {},   // photoId → true (썸네일 생성 중 — 중복 생성 방지)
 };
 
 // ─── 유틸 ───
@@ -1188,6 +1190,8 @@ async function deleteTripPhoto(tripId, photoId) {
   await updateDoc(doc(db,'trips',tripId), { photoIds: arrayRemove(photoId) });
   const t = tripById(tripId); if (t) t.photoIds = (t.photoIds||[]).filter(p=>p!==photoId);
   delete S.photoCache[photoId];
+  delete S.thumbCache[photoId];
+  delete S.thumbPending[photoId];
 }
 
 // 여행 사진들 일괄 업로드 (리사이즈 후 Firestore 문서 1MiB 한도 내로 저장)
@@ -1246,6 +1250,47 @@ const seedIdx = (key, n) => {
   return (h>>>0) % n;
 };
 
+// 카드 배경 전용 축소본. 저장본(1280×849)을 그대로 배경에 쓰면 카드가 실제로 쓰는 픽셀의 3~6배를
+// 디코드한다(실측: 장당 4.1MB · 사진 9장이면 디코드 비트맵 36.9MB). 그만한 양은 홈이 상세 오버레이에
+// 가려진 동안 브라우저 캐시에서 밀려나고, 다시 드러날 때 비동기로 재디코드되면서 사진 없는 프레임이
+// 한 번 지나간다(= "전체 사진이 깜빡"). 축소본은 그 비용을 ~1/2.6로 줄여 원인을 없앤다.
+// 폭 1080 = 폰(앱 폭 최대 600 CSS px × DPR 3)에서 필요한 최대치. 3:1은 카드 비율(2.7~4.3:1) 중간값.
+const CARD_THUMB_W = 1080, CARD_THUMB_AR = 3;
+function makeCardThumb(dataUrl) {
+  return new Promise(res => {
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const w = Math.min(CARD_THUMB_W, img.naturalWidth);
+        const h = Math.round(w / CARD_THUMB_AR);
+        const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+        const s = Math.max(w / img.naturalWidth, h / img.naturalHeight);   // background-size:cover 와 동일
+        const dw = img.naturalWidth * s, dh = img.naturalHeight * s;
+        cv.getContext('2d').drawImage(img, (w - dw) / 2, (h - dh) / 2, dw, dh);
+        res(cv.toDataURL('image/jpeg', 0.72));
+      } catch(e) { res(null); }
+    };
+    img.onerror = () => res(null);
+    img.src = dataUrl;
+  });
+}
+
+// 원본으로 이미 칠해진 카드를 축소본으로 한 번 교체한다(사진당 세션 1회).
+// 교체 전 decode()로 축소본을 미리 디코드해 둔다 — 이게 decode()의 본래 용도이며,
+// 없으면 교체하는 그 순간 배경이 한 프레임 비어 우리가 고치려는 깜빡임을 되레 만든다.
+function upgradeToThumb(pid, dataUrl, card, paint) {
+  if (S.thumbCache[pid] || S.thumbPending[pid]) return;
+  S.thumbPending[pid] = true;
+  makeCardThumb(dataUrl).then(async thumb => {
+    delete S.thumbPending[pid];
+    if (!thumb) return;
+    S.thumbCache[pid] = thumb;
+    const im = new Image(); im.src = thumb;
+    try { if (im.decode) await im.decode(); } catch(e) { /* 디코드 실패해도 교체는 진행 */ }
+    if (card.isConnected) paint(thumb);
+  });
+}
+
 // 카드(홈)에 여행 사진을 배경으로 적용 (카드당 1장만 지연 로딩).
 // 랜덤이 아니라 '여행ID + 오늘 날짜' 시드의 결정론적 선택 — 하루 동안은 같은 사진, 자정이 지나면 바뀐다.
 // renderHome()이 모든 저장·삭제 뒤에 불리므로, Math.random()으로 되돌리면 지출 한 건 저장할 때마다
@@ -1264,9 +1309,16 @@ function applyCardBackgrounds(listEl) {
     };
     // 메모리 캐시에 있으면 동기로 칠한다 — renderHome()이 innerHTML을 갈아끼우므로
     // 프라미스를 거치면 재렌더마다 배경이 한 프레임 사라졌다 돌아온다.
+    // 축소본이 이미 있으면 그것만 쓴다(가장 흔한 경로 — 원본은 아예 페인트되지 않는다).
+    const thumb = S.thumbCache[pid];
+    if (thumb) { paint(thumb); return; }
     const cached = S.photoCache[pid];
-    if (cached) { paint(cached); return; }
-    fetchPhoto(pid).then(url=>{ if (url && card.isConnected) paint(url); });
+    if (cached) { paint(cached); upgradeToThumb(pid, cached, card, paint); return; }
+    fetchPhoto(pid).then(url=>{
+      if (!url || !card.isConnected) return;
+      paint(url);
+      upgradeToThumb(pid, url, card, paint);
+    });
   });
 }
 
@@ -1581,6 +1633,12 @@ function renderHome() {
 }
 
 // ─── 렌더: 상세 오버레이 ───
+// 하단 탭(#bottom-tabs)을 숨기지 않는다: #detail-overlay(z200·fixed·불투명)가 탭바(z100)를 이미 덮으므로
+// 숨길 필요가 없다(실측으로 확인 — 상세를 열어도 탭바는 보이지 않는다).
+// display 토글은 #app/문서 높이를 64px 흔들어(실측 1722→1658→1722) 여닫을 때마다 레이아웃을 무효화하고,
+// 탭바의 backdrop-filter까지 재합성시킨다. 그 리페인트가 카드 배경 사진 재디코드를 불러
+// "뒤로 나오면 전 카드가 한 번 깜빡"이는 원인이 됐다. 되돌리지 말 것.
+// (전환 중 탭바 노출이 문제가 되면 display가 아니라 visibility:hidden을 쓸 것 — 레이아웃 불변)
 function openDetail(id) {
   const t = tripById(id); if(!t) return;
   S.detailId = id;
@@ -1588,7 +1646,6 @@ function openDetail(id) {
   document.getElementById('detail-title').textContent = t.title;
   renderDetailBody(t);
   document.getElementById('detail-overlay').classList.add('show');
-  document.getElementById('bottom-tabs').style.display = 'none';
   navPush({ type: 'detail' });
 }
 
@@ -1597,7 +1654,6 @@ function closeDetail() {
   if (!ov.classList.contains('show')) return;
   if (!Nav.popping) { navBack(); return; }   // UI 호출 → history 통해 위임
   ov.classList.remove('show');
-  document.getElementById('bottom-tabs').style.display = '';
   S.detailId = null;
 }
 
