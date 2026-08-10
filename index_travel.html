@@ -1278,7 +1278,9 @@ function makeCardThumb(dataUrl) {
 // 원본으로 이미 칠해진 카드를 축소본으로 한 번 교체한다(사진당 세션 1회).
 // 교체 전 decode()로 축소본을 미리 디코드해 둔다 — 이게 decode()의 본래 용도이며,
 // 없으면 교체하는 그 순간 배경이 한 프레임 비어 우리가 고치려는 깜빡임을 되레 만든다.
-function upgradeToThumb(pid, dataUrl, card, paint) {
+// 카드 엘리먼트는 붙잡지 않고 교체 직전에 다시 찾는다: 생성 중에 renderHome()이 돌면
+// (지출 저장 등) 붙잡아둔 카드는 innerHTML 교체로 이미 버려진 노드라 칠해도 화면에 안 보인다.
+function upgradeToThumb(pid, tripId, dataUrl) {
   if (S.thumbCache[pid] || S.thumbPending[pid]) return;
   S.thumbPending[pid] = true;
   makeCardThumb(dataUrl).then(async thumb => {
@@ -1287,7 +1289,11 @@ function upgradeToThumb(pid, dataUrl, card, paint) {
     S.thumbCache[pid] = thumb;
     const im = new Image(); im.src = thumb;
     try { if (im.decode) await im.decode(); } catch(e) { /* 디코드 실패해도 교체는 진행 */ }
-    if (card.isConnected) paint(thumb);
+    const card = document.querySelector(`#home-list .trip-card[data-id="${tripId}"]`);
+    if (card) {
+      card.style.setProperty('--card-bg', `url("${thumb}")`);
+      card.classList.add('has-photo');
+    }
   });
 }
 
@@ -1313,11 +1319,11 @@ function applyCardBackgrounds(listEl) {
     const thumb = S.thumbCache[pid];
     if (thumb) { paint(thumb); return; }
     const cached = S.photoCache[pid];
-    if (cached) { paint(cached); upgradeToThumb(pid, cached, card, paint); return; }
+    if (cached) { paint(cached); upgradeToThumb(pid, t.id, cached); return; }
     fetchPhoto(pid).then(url=>{
       if (!url || !card.isConnected) return;
       paint(url);
-      upgradeToThumb(pid, url, card, paint);
+      upgradeToThumb(pid, t.id, url);
     });
   });
 }
