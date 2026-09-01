@@ -53,6 +53,20 @@ balance_hj와 동일 패턴이며 **가계부 내보내기 시 balance 재인증
   - `upgradeToThumb`은 축소본을 `decode()`로 미리 디코드한 뒤에 교체한다. 이 `await`을 빼면 교체하는 순간 배경이 한 프레임 비어 고치려던 깜빡임을 되레 만든다.
   - 살아있는 `Image` 참조로 디코드를 붙잡는 방식(`pinDecoded`)은 **쓰지 않는다** — Blink의 디코드 캐시는 페인트에 묶여 있어 DOM 밖 Image로는 보장되지 않고, 성공해도 36.9MB를 계속 붙잡는다.
 
+### 여행 메모 (메모 · 링크) — v3.5
+여행당 큰 메모장 1개(게시판 아님). 계획·예약번호·링크를 자유롭게 적고, URL은 탭하면 새 탭으로 열린다.
+- **저장 위치는 `trips` 문서의 `memo` / `memoUpdatedAt` / `memoBy` 필드** — 별도 컬렉션이 아니다. 컬렉션으로 분리하면 `firestore.rules`에 `match` 블록 추가 + 규칙 배포가 필요해지고(누락 시 permission-denied), `loadAll`에 쿼리가 하나 더 붙는다. 지금은 기존 trips 쿼리에 딸려와 **추가 읽기 0·오프라인 즉시 표시**다. 쓰기도 기존 `updateTrip()`을 그대로 쓴다. 세 필드 모두 선택적이라 옛 여행 마이그레이션이 필요 없다(`t.memo||''` 폴백).
+- **메모 저장 경로에서 `renderHome()`을 부르지 말 것**: 홈 카드는 메모를 표시하지 않는데 호출하면 `applyCardBackgrounds`가 다시 돌아 카드 사진 깜빡임(v3.3/v3.4에서 잡은 버그)이 재발한다. `saveMemo`는 상세만 다시 그린다.
+- **시트를 닫는 순간이 곧 저장이다**(`closeSheet`의 `id==='memo-overlay'` 분기 → `flushMemo`). 백드롭 탭·아래로 스와이프·뒤로가기 어느 쪽으로 닫아도 글이 사라지지 않는 게 목적이므로 "취소" 버튼을 만들지 말 것. 변경이 없으면 Firestore 쓰기도 하지 않는다(`val===base` 비교). 이 분기는 `if (!Nav.popping) { navBack(); return; }` 가드 **아래**에 있어야 popstate 경로에서 1회만 실행된다.
+- **`linkify`는 `esc()`를 먼저 적용한 뒤 http/https만 매칭한다** — 순서를 바꾸거나(주입 위험) 스킴을 넓히지(`javascript:`) 말 것. 줄바꿈은 `<br>` 변환 없이 `.memo-body{white-space:pre-wrap}`이 처리한다.
+- **메모 카드 본문은 탭 대상이 아니다** — 편집 진입은 헤더의 `편집` 버튼뿐. 본문을 탭 가능하게 만들면 링크 탭과 충돌한다.
+- `initSheetGestures`의 무시 셀렉터에 **`textarea`가 포함돼야 한다**(`input,select,textarea`). 빼면 메모를 쓰다 손가락을 내릴 때 시트가 끌려 내려가 닫힌다.
+- 접기/펼치기는 렌더 후 `scrollHeight > clientHeight` **실측**으로 판정한다(글자 수 추정 금지 — 줄바꿈·줄바꿈폭 때문에 빗나간다).
+- `bindMemoViewport`: 키보드가 올라오면 하단 고정 시트의 `완료` 버튼이 가려지므로 `visualViewport.resize`에 맞춰 **입력창 높이만** 줄인다(메모 시트가 열려 있는 동안만, 닫을 때 인라인 높이 원복). 실측 확인: iPhone SE(보이는 높이 336px)까지 시트 전체가 들어간다.
+- 동시 편집은 **last-write-wins**. 완화책으로 시트를 열 때 `refreshTripMemo`가 trip 문서 1건만 서버에서 다시 읽어 최신본을 기준으로 편집하게 한다(사용자가 이미 타이핑 중이면 건드리지 않음). onSnapshot을 도입할 이유는 아직 없다.
+- **메모는 GAS/Sheets 백업 대상이 아니다**(사진과 동일 정책). 백업에 넣으려면 GAS 재배포가 필요하므로 기본은 제외.
+- 홈 카드에는 메모 표시를 넣지 않는다 — 카드는 "총 지출 + 기간 + 나라 수"라는 v3.1 원칙 유지.
+
 ### firebaseConfig / BALANCE_CONFIG
 클라이언트 노출은 Firebase 표준 — 삭제·변경 금지. `BALANCE_CONFIG`는 가계부 내보내기용 balance-hj 프로젝트 설정이며, 보조 앱은 `window._balApp`으로 메모이즈(`initializeApp(BALANCE_CONFIG,'balance')`) — 중복 초기화 시 duplicate-app 에러.
 

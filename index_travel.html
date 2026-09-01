@@ -335,6 +335,18 @@ input[type="date"].form-input{font-size:var(--text-body);-webkit-appearance:none
 .sheet-btn.danger{color:var(--danger)}
 .sheet-btn.cancel{color:var(--text-muted);border-bottom:none}
 
+/* ── MEMO (여행 메모·링크) */
+#memo-overlay .sheet-box{max-height:88vh;overflow-y:auto}
+.memo-textarea{display:block;height:auto;min-height:240px;max-height:46vh;padding:12px 14px;line-height:1.6;resize:none;font-family:inherit;overflow-y:auto}
+.memo-card{background:var(--surface-1);border:1px solid var(--border);border-radius:var(--radius-card);margin:0 16px;padding:14px 16px}
+.memo-body{font-size:var(--text-caption);color:var(--text);line-height:1.65;white-space:pre-wrap;overflow-wrap:anywhere}
+.memo-body.clamp{max-height:17em;overflow:hidden;position:relative}
+.memo-body.clamp::after{content:'';position:absolute;left:0;right:0;bottom:0;height:44px;background:linear-gradient(to bottom,rgba(28,28,30,0),var(--surface-1))}
+.memo-link{color:var(--blue);text-decoration:none;overflow-wrap:anywhere}
+.memo-more{background:none;border:none;color:var(--blue);font-family:inherit;font-size:var(--text-micro);padding:8px 0 0;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.memo-meta{font-size:var(--text-micro);color:var(--text-muted);margin-top:10px}
+.memo-empty{font-size:var(--text-caption);color:var(--text-muted);text-align:center;padding:22px 16px}
+
 /* ── PIN */
 #pin-overlay{display:none;position:fixed;inset:0;background:var(--bg);z-index:9999;flex-direction:column;align-items:center;justify-content:center}
 #pin-overlay.show{display:flex}
@@ -365,7 +377,7 @@ input[type="date"].form-input{font-size:var(--text-body);-webkit-appearance:none
   <header id="app-header">
     <div id="header-title-wrap">
       <span id="header-title">여행</span>
-      <span id="header-version">v3.4</span>
+      <span id="header-version">v3.5</span>
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-muted)"><polyline points="6 9 12 15 18 9"/></svg>
     </div>
     <button id="header-manage" type="button" aria-label="관리">
@@ -751,6 +763,26 @@ input[type="date"].form-input{font-size:var(--text-body);-webkit-appearance:none
     </div>
   </div>
 
+  <!-- ────── 메모 시트 ────── -->
+  <div id="memo-overlay" class="sheet-overlay">
+    <div class="sheet-box">
+      <div class="sheet-form-title">메모 · 링크</div>
+      <div class="sheet-form-sub">계획·예약번호·링크를 자유롭게 적어두세요</div>
+      <div class="sheet-form">
+        <div class="form-group">
+          <textarea id="mm-text" class="form-input memo-textarea" maxlength="10000" placeholder="예)&#10;8/12 인천 08:30 출발&#10;호텔 예약번호 A123&#10;https://maps.google.com/..." autocomplete="off"></textarea>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:6px">
+            <div class="form-hint" id="mm-meta"></div>
+            <button class="memo-more" id="mm-clear" type="button" style="color:var(--danger);flex-shrink:0">전체 지우기</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <button class="btn btn-primary" id="mm-save" type="button">완료</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ────── PIN ────── -->
   <div id="pin-overlay" class="show">
     <div id="pin-box">
@@ -855,6 +887,16 @@ const todayStr = () => { const d=new Date(); return d.getFullYear()+'-'+String(d
 const fmtDateFull  = s => { if(!s) return ''; const d=new Date(s+'T00:00:00'); return (d.getMonth()+1)+'월 '+d.getDate()+'일 ('+DAY[d.getDay()]+')'; };
 const fmtDateShort = s => { if(!s) return ''; const [,m,d]=s.split('-'); return m+'월 '+d+'일'; };
 
+// 메모 본문의 URL만 링크로 변환. esc()를 먼저 적용하므로 <,",&가 이미 엔티티화되어 주입 위험이 없고,
+// http/https만 매칭하므로 javascript: 스킴은 애초에 걸리지 않는다. (순서·스킴 범위를 바꾸지 말 것)
+function linkify(text) {
+  return esc(text).replace(/https?:\/\/[^\s<]+/g, m => {
+    const t = m.match(/[.,;:!?)\]}'"]+$/);          // 문장 끝 부호는 링크에서 제외
+    const url = t ? m.slice(0, -t[0].length) : m;
+    return `<a href="${url}" target="_blank" rel="noopener noreferrer" class="memo-link">${url}</a>${t?t[0]:''}`;
+  });
+}
+
 let _toastTmr;
 function toast(msg, dur=2400) {
   const el=document.getElementById('toast');
@@ -906,6 +948,7 @@ function closeSheet(id) {
   if (!ov.classList.contains('show') || ov.classList.contains('closing')) return;
   if (!Nav.popping) { navBack(); return; }    // UI 호출 → history 통해 위임
   ov.classList.add('closing');
+  if (id === 'memo-overlay') { flushMemo(); unbindMemoViewport(); }   // 미저장 메모 보존(닫힘 = 자동 저장)
   setTimeout(()=>{
     ov.classList.remove('show','closing');
     ov.style.zIndex = '';                      // 동적 z-index 초기화(다음 열림 때 재계산)
@@ -919,7 +962,7 @@ function initSheetGestures() {
     if (!box) return;
     let startY=0, curY=0, dragging=false;
     box.addEventListener('touchstart',e=>{
-      if (e.target.closest('input,select')) return;
+      if (e.target.closest('input,select,textarea')) return;   // textarea(메모)에서 드래그하면 시트가 닫히므로 제외
       dragging=true; startY=e.touches[0].clientY; curY=startY;
     },{passive:true});
     box.addEventListener('touchmove',e=>{
@@ -1718,6 +1761,22 @@ function renderDetailBody(trip) {
     </div>`;
   }).join('');
 
+  // 메모 · 링크 섹션 (본문은 탭 대상이 아님 — 링크 탭과 충돌 방지, 편집은 헤더 버튼으로만)
+  const memoTxt = (trip.memo||'').trim();
+  const memoMeta = trip.memoUpdatedAt
+    ? `<div class="memo-meta">${esc(trip.memoBy||'')}${trip.memoBy?' · ':''}${esc(String(trip.memoUpdatedAt).slice(0,10))} 수정</div>` : '';
+  const memoSec = `
+    <div class="section-header-row">
+      <div class="section-header">메모 · 링크</div>
+      <button class="filter-btn" id="detail-memo-btn" type="button" aria-label="${memoTxt?'메모 편집':'메모 추가'}">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        <span>${memoTxt?'편집':'추가'}</span>
+      </button>
+    </div>
+    ${memoTxt
+      ? `<div class="memo-card"><div class="memo-body clamp" id="memo-body">${linkify(memoTxt)}</div><button class="memo-more" id="memo-more" type="button" style="display:none">… 더보기</button>${memoMeta}</div>`
+      : `<div class="memo-card memo-empty">여행 계획·예약번호·링크를 자유롭게 적어두세요</div>`}`;
+
   // 타임라인 (통합, 항목별 통화 표시) — 필터·정렬 적용
   const flt = S.detailFilter;
   const fltActive = (flt.cats.length>0) || (flt.sort!=='date_desc');
@@ -1792,6 +1851,7 @@ function renderDetailBody(trip) {
         <div class="sc-sub">전체 환전 합계</div>
       </div>
     </div>
+    ${memoSec}
     ${multi?'<div class="section-header">구간별 내역</div>':''}
     ${legSecs}
     ${st.spKRW>0?`<div class="section-header">카테고리별 지출</div>${catBars}`:''}
@@ -1815,6 +1875,18 @@ function renderDetailBody(trip) {
   animateValue(document.getElementById('sc-ex'), st.exKRW, v=>fmtKRW(Math.round(v)));
   document.getElementById('export-btn')?.addEventListener('click',()=>openExport(trip.id));
   document.getElementById('detail-filter-btn')?.addEventListener('click', openDetailFilter);
+  document.getElementById('detail-memo-btn')?.addEventListener('click', ()=>openMemo(trip.id));
+  const mb = document.getElementById('memo-body');
+  if (mb) {
+    const more = document.getElementById('memo-more');
+    if (mb.scrollHeight > mb.clientHeight + 2) {          // 실측으로 접기 필요 여부 판정
+      more.style.display = '';
+      more.addEventListener('click', ()=>{
+        const on = mb.classList.toggle('clamp');
+        more.textContent = on ? '… 더보기' : '접기';
+      });
+    } else mb.classList.remove('clamp');
+  }
   document.getElementById('detail-body').querySelectorAll('[data-edit-sp]').forEach(r=>{
     const open=()=>openEdit('expense', r.dataset.editSp);
     r.addEventListener('click', open);
@@ -1856,6 +1928,105 @@ document.getElementById('df-apply')?.addEventListener('click', ()=>{
 document.getElementById('detail-filter-overlay')?.addEventListener('click', e=>{
   if(e.target===document.getElementById('detail-filter-overlay')) closeSheet('detail-filter-overlay');
 });
+
+// ─── 여행 메모 시트 ───
+// 메모는 trips 문서의 memo/memoUpdatedAt/memoBy 필드에 저장한다(별도 컬렉션 아님 → 규칙 배포 불필요).
+// 시트를 닫는 순간 변경분을 저장한다(노트 앱 방식) — 실수로 스와이프해 닫아도 글이 사라지지 않는다.
+const MEMO_MAX = 10000;
+let _memoCtx = null;                       // { tripId, base } — base = 시트를 열 때의 원문
+
+function setMemoMeta(t) {
+  const el = document.getElementById('mm-meta');
+  el.textContent = t && t.memoUpdatedAt
+    ? `${t.memoBy||''}${t.memoBy?' · ':''}${String(t.memoUpdatedAt).slice(0,10)} 수정` : '';
+}
+
+function openMemo(tripId) {
+  const t = tripById(tripId); if(!t) return;
+  const ta = document.getElementById('mm-text');
+  ta.value = t.memo || '';
+  _memoCtx = { tripId, base: ta.value };
+  setMemoMeta(t);
+  openSheet('memo-overlay');
+  bindMemoViewport();
+  refreshTripMemo(tripId);                 // 서버 최신본 반영(비동기)
+}
+
+// 키보드가 올라오면 하단 고정 시트의 아래쪽(완료 버튼)이 가려진다.
+// 보이는 영역(visualViewport)에 맞춰 입력창 높이만 줄여 항상 완료 버튼이 닿게 한다.
+// 메모 시트가 열려 있는 동안에만 동작하며, 닫을 때 인라인 높이를 되돌린다.
+let _memoVv = null;
+function bindMemoViewport() {
+  const vv = window.visualViewport; if (!vv) return;
+  const ta  = document.getElementById('mm-text');
+  const box = document.querySelector('#memo-overlay .sheet-box');
+  const fit = () => {
+    const chrome = box.offsetHeight - ta.offsetHeight;      // 입력창을 뺀 시트 구성요소 높이
+    const h = Math.max(100, Math.min(vv.height - chrome - 24, Math.round(window.innerHeight*0.46)));
+    ta.style.minHeight = h + 'px';
+    ta.style.height    = h + 'px';
+  };
+  fit();
+  _memoVv = fit;
+  vv.addEventListener('resize', fit);
+}
+function unbindMemoViewport() {
+  if (!_memoVv) return;
+  window.visualViewport.removeEventListener('resize', _memoVv);
+  _memoVv = null;
+  const ta = document.getElementById('mm-text');
+  ta.style.minHeight = ''; ta.style.height = '';
+}
+
+// onSnapshot이 없는 앱이라 상대(희/정)가 쓴 메모를 덮을 수 있다.
+// 시트를 열 때 trip 문서 1건만 다시 읽어 최신본을 기준으로 편집하게 한다.
+async function refreshTripMemo(tripId) {
+  let snap;
+  try { snap = await getDoc(doc(db,'trips',tripId)); } catch(e) { return; }   // 오프라인 → 로컬 유지
+  if (!snap.exists()) return;
+  const r = snap.data();
+  const i = S.trips.findIndex(t=>t.id===tripId);
+  if (i>=0) S.trips[i] = {...S.trips[i], memo:r.memo||'', memoUpdatedAt:r.memoUpdatedAt||'', memoBy:r.memoBy||''};
+  if (!_memoCtx || _memoCtx.tripId!==tripId) return;        // 이미 닫힘
+  const ta = document.getElementById('mm-text');
+  if (ta.value !== _memoCtx.base) return;                   // 사용자가 이미 타이핑 중 → 건드리지 않음
+  if ((r.memo||'') === _memoCtx.base) return;               // 동일
+  ta.value = r.memo || '';
+  _memoCtx.base = ta.value;
+  if (i>=0) setMemoMeta(S.trips[i]);
+  toast('다른 기기에서 수정된 최신 메모를 불러왔어요', 3000);
+}
+
+// 시트를 연 채 앱을 백그라운드로 보내거나 탭을 닫으면 flushMemo가 돌지 않는다.
+// (PWA에서 앱을 쓸어 넘기는 흐름) — 숨겨지는 시점에 변경분을 저장해 둔다.
+// _memoCtx는 비우지 않고 base만 갱신 → 돌아와서 계속 쓸 수 있고, 닫을 때 중복 저장도 되지 않는다.
+document.addEventListener('visibilitychange', ()=>{
+  if (document.visibilityState !== 'hidden' || !_memoCtx) return;
+  const val = document.getElementById('mm-text').value;
+  if (val === _memoCtx.base) return;
+  _memoCtx.base = val;
+  saveMemo(_memoCtx.tripId, val);
+});
+
+function flushMemo() {
+  if (!_memoCtx) return;
+  const { tripId, base } = _memoCtx;
+  _memoCtx = null;
+  const val = document.getElementById('mm-text').value;
+  if (val === base) return;                // 변경 없음 → Firestore 쓰기 없음
+  saveMemo(tripId, val);
+}
+
+async function saveMemo(tripId, text) {
+  const memo = String(text||'').slice(0, MEMO_MAX);
+  try {
+    await updateTrip(tripId, { memo, memoUpdatedAt:new Date().toISOString(), memoBy:S.currentUserName||'' });
+    // renderHome()은 부르지 않는다 — 홈 카드는 메모를 표시하지 않으며,
+    // 호출하면 applyCardBackgrounds가 다시 돌아 카드 사진 깜빡임(v3.3/v3.4)이 재발한다.
+    if (S.detailId===tripId) { const t=tripById(tripId); if(t) renderDetailBody(t); }
+    toast(memo ? '메모를 저장했습니다' : '메모를 비웠습니다');
+  } catch(e) { console.error(e); toast('메모 저장에 실패했습니다', 3500); }
+}
 
 // ─── 가계부 내보내기 ───
 function openExport(tripId) {
@@ -2221,6 +2392,10 @@ async function confirmDel() {
       syncTripSelects();
       renderHome();
       toast('여행을 삭제했습니다');
+    } else if (type==='memo') {
+      // 입력창만 비운다 — 실제 저장은 '완료'(=시트 닫힘 시 flushMemo)
+      document.getElementById('mm-text').value = '';
+      toast('완료를 누르면 저장됩니다');
     }
   } catch(e) { console.error(e); toast('삭제에 실패했습니다',3500); }
 }
@@ -2463,6 +2638,15 @@ document.getElementById('dm-apply').addEventListener('click', applySmartSync);
 document.getElementById('dm-done-btn').addEventListener('click', ()=>closeSheet('datamgmt-overlay'));
 document.getElementById('datamgmt-overlay').addEventListener('click',e=>{
   if(e.target===document.getElementById('datamgmt-overlay')) closeSheet('datamgmt-overlay');
+});
+
+// 메모 시트
+document.getElementById('mm-save').addEventListener('click', ()=>closeSheet('memo-overlay'));  // 닫힘 시 flushMemo가 저장
+document.getElementById('mm-clear').addEventListener('click', ()=>{
+  if (_memoCtx) askDel('memo', _memoCtx.tripId, '메모를 전체 지울까요?');
+});
+document.getElementById('memo-overlay').addEventListener('click',e=>{
+  if(e.target===document.getElementById('memo-overlay')) closeSheet('memo-overlay');
 });
 
 // 시트 스와이프 닫기
