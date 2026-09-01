@@ -1694,6 +1694,12 @@ function openDetail(id) {
   S.detailFilter = { sort:'date_desc', cats:[] };
   document.getElementById('detail-title').textContent = t.title;
   renderDetailBody(t);
+  // 항상 맨 위에서 시작한다. innerHTML 교체만으로는 초기화되지 않아(새 내용도 충분히 길면
+  // 이전 스크롤 위치가 그대로 유효) 직전에 보던 여행의 위치가 남는다.
+  // 오버레이가 아직 화면 밖(translateX(100%))일 때 되돌리므로 튀어 보이지 않는다.
+  // renderDetailBody가 아니라 여기에 두는 게 핵심 — 저장·삭제 후 재렌더에서 맨 위로
+  // 튀면 읽던 자리를 잃는다.
+  document.getElementById('detail-body').scrollTop = 0;
   document.getElementById('detail-overlay').classList.add('show');
   navPush({ type: 'detail' });
 }
