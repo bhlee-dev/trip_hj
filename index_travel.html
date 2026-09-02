@@ -344,8 +344,10 @@ input[type="date"].form-input{font-size:var(--text-body);-webkit-appearance:none
    가로로 반만 잘려 보인다(예전 17em ÷ 1.65 = 10.3줄 → 11번째 줄이 잘렸다).
    줄 수를 바꿀 땐 아래 6만 고치고 계산식은 그대로 둘 것. */
 .memo-body.clamp{max-height:calc(6 * 1.65em);overflow:hidden;position:relative}
-/* 페이드는 마지막 한 줄만 덮는다. 접힌 높이(6줄=138.6px)에 비해 크면 읽을 줄까지 가린다. */
-.memo-body.clamp::after{content:'';position:absolute;left:0;right:0;bottom:0;height:24px;background:linear-gradient(to bottom,rgba(28,28,30,0),var(--surface-1))}
+/* 페이드는 아래 3줄(= 박스 중간부터)에 걸친다. 글이 서서히 사라져야 '아래 더 있다'가 읽힌다.
+   짧게 잡아 글자가 또렷하게 끝나면 뒤에 내용이 더 있다는 느낌이 사라진다(24px로 줄였다가 되돌림).
+   접힌 높이를 바꾸면 이 3도 같은 비율로 함께 볼 것. */
+.memo-body.clamp::after{content:'';position:absolute;left:0;right:0;bottom:0;height:calc(3 * 1.65em);background:linear-gradient(to bottom,rgba(28,28,30,0),var(--surface-1))}
 .memo-link{color:var(--blue);text-decoration:none;overflow-wrap:anywhere}
 .memo-more{background:none;border:none;color:var(--blue);font-family:inherit;font-size:var(--text-micro);padding:8px 0 0;cursor:pointer;-webkit-tap-highlight-color:transparent}
 .memo-meta{font-size:var(--text-micro);color:var(--text-muted);margin-top:10px}
